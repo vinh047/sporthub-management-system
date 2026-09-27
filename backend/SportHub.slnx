@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SportHub.API/SportHub.API.csproj" />
+    <Project Path="src/SportHub.Application/SportHub.Application.csproj" />
+    <Project Path="src/SportHub.Domain/SportHub.Domain.csproj" />
+    <Project Path="src/SportHub.Infrastructure/SportHub.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SportHub.Tests/SportHub.Tests.csproj" />
+  </Folder>
+</Solution>
