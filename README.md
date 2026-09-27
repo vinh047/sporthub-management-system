@@ -3,7 +3,7 @@
 Hệ thống quản lý chuỗi sân thể thao đa chi nhánh với kiến trúc **Layered Monolith (Clean Architecture)**.
 
 ## 🚀 Giới thiệu
-Dự án được xây dựng cho **5 thành viên** phát triển trong thời gian **10 tuần**. Mục tiêu là số hóa việc quản lý và đặt sân thể thao, cung cấp trải nghiệm cho:
+ Mục tiêu là số hóa việc quản lý và đặt sân thể thao, cung cấp trải nghiệm cho:
 - **Người chơi (Player):** Đặt sân, giữ chỗ (hold slot) 10 phút, tìm người ghép kèo, đánh giá uy tín.
 - **Nhân viên (Staff):** Check-in (Quét QR hoặc số điện thoại), quản lý trạng thái sân real-time, đặt sân hộ khách vãng lai.
 - **Quản lý (Admin):** Quản lý chuỗi cơ sở, thiết lập giá động (Dynamic Pricing), xem báo cáo doanh thu.
