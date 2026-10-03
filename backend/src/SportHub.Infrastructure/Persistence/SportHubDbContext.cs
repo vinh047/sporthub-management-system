@@ -1,13 +1,14 @@
 using Microsoft.EntityFrameworkCore;
-using SportHub.Domain.Entities;
 using SportHub.Domain.Entities.Auth;
 using SportHub.Domain.Entities.Booking;
 using SportHub.Domain.Entities.Facility;
-using SportHub.Domain.Entities.Matching;
 using SportHub.Domain.Entities.Payment;
 using SportHub.Domain.Entities.Notifications;
 using SportHub.Domain.Entities.Player;
 using SportHub.Domain.Entities.System;
+using SportHub.Domain.Entities.Social;
+using SportHub.Domain.Entities.Tournament;
+using SportHub.Domain.Entities.Loyalty;
 
 namespace SportHub.Infrastructure.Persistence;
 
@@ -43,20 +44,33 @@ public class SportHubDbContext(DbContextOptions<SportHubDbContext> options) : Db
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
 
-    // Matching
-    public DbSet<MatchRoom> MatchRooms => Set<MatchRoom>();
-    public DbSet<MatchMember> MatchMembers => Set<MatchMember>();
-    public DbSet<MatchMemberLeaveLog> MatchMemberLeaveLogs => Set<MatchMemberLeaveLog>();
+    // Social Sessions
+    public DbSet<SocialSession> SocialSessions => Set<SocialSession>();
+    public DbSet<SocialSessionCourt> SocialSessionCourts => Set<SocialSessionCourt>();
+    public DbSet<SocialParticipant> SocialParticipants => Set<SocialParticipant>();
+
+    // Tournaments
+    public DbSet<Domain.Entities.Tournament.Tournament> Tournaments => Set<Domain.Entities.Tournament.Tournament>();
+    public DbSet<TournamentTeam> TournamentTeams => Set<TournamentTeam>();
+    public DbSet<TournamentAthlete> TournamentAthletes => Set<TournamentAthlete>();
+    public DbSet<TournamentMatch> TournamentMatches => Set<TournamentMatch>();
+
+    // Loyalty & CRM
+    public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<UserVoucher> UserVouchers => Set<UserVoucher>();
+    public DbSet<LoyaltyHistory> LoyaltyHistories => Set<LoyaltyHistory>();
 
     // Notifications
     public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<UserDeviceToken> UserDeviceTokens => Set<UserDeviceToken>();
 
-    // Player & System
+    // Player & AI Rating
     public DbSet<PlayerProfile> PlayerProfiles => Set<PlayerProfile>();
-    public DbSet<UserFavoriteSport> UserFavoriteSports => Set<UserFavoriteSport>();
     public DbSet<ReputationHistory> ReputationHistories => Set<ReputationHistory>();
+    public DbSet<SkillRatingHistory> SkillRatingHistories => Set<SkillRatingHistory>();
+
+    // System
     public DbSet<SystemAuditLog> SystemAuditLogs => Set<SystemAuditLog>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 

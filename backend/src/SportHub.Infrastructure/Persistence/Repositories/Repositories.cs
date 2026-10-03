@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Domain.Entities.Auth;
+using SportHub.Domain.Entities.Social;
+using SportHub.Domain.Entities.Tournament;
 using SportHub.Infrastructure.Persistence;
 
 namespace SportHub.Infrastructure.Persistence.Repositories;
@@ -79,28 +81,43 @@ public class CourtRepository(SportHubDbContext context)
             .ToListAsync();
 }
 
-// ===== Match Room Repository =====
-public class MatchRoomRepository(SportHubDbContext context)
-    : Repository<Domain.Entities.Matching.MatchRoom>(context), IMatchRoomRepository
+// ===== Social Session Repository =====
+public class SocialSessionRepository(SportHubDbContext context)
+    : Repository<SocialSession>(context), ISocialSessionRepository
 {
-    public async Task<IEnumerable<Domain.Entities.Matching.MatchRoom>> SearchRoomsAsync(
-        int? sportId, int? facilityId, DateOnly? date, string? skillLevel)
+    public async Task<IEnumerable<SocialSession>> GetByFacilityAsync(int facilityId, DateOnly? date)
     {
-        var query = _dbSet
-            .Include(r => r.BookingDetail).ThenInclude(d => d.Court).ThenInclude(c => c.Sport)
-            .Include(r => r.BookingDetail).ThenInclude(d => d.Court).ThenInclude(c => c.Facility)
-            .Include(r => r.Members)
-            .Where(r => r.RoomStatus == Domain.Enums.RoomStatus.Open);
-
-        if (sportId.HasValue)
-            query = query.Where(r => r.BookingDetail.Court.SportId == sportId);
-        if (facilityId.HasValue)
-            query = query.Where(r => r.BookingDetail.Court.FacilityId == facilityId);
+        var query = _dbSet.Where(s => s.FacilityId == facilityId && s.Status == "Published");
         if (date.HasValue)
-            query = query.Where(r => r.BookingDetail.PlayDate == date);
-
-        return await query.ToListAsync();
+            query = query.Where(s => s.PlayDate == date.Value);
+        return await query.Include(s => s.Sport).Include(s => s.Participants).ToListAsync();
     }
+
+    public async Task<IEnumerable<SocialSession>> SearchAsync(int? sportId, decimal? minSkill, decimal? maxSkill)
+    {
+        var query = _dbSet.Where(s => s.Status == "Published");
+        if (sportId.HasValue) query = query.Where(s => s.SportId == sportId.Value);
+        if (minSkill.HasValue) query = query.Where(s => s.MinSkill >= minSkill.Value);
+        if (maxSkill.HasValue) query = query.Where(s => s.MaxSkill <= maxSkill.Value);
+        return await query.Include(s => s.Participants).ToListAsync();
+    }
+}
+
+// ===== Tournament Repository =====
+public class TournamentRepository(SportHubDbContext context)
+    : Repository<Domain.Entities.Tournament.Tournament>(context), ITournamentRepository
+{
+    public async Task<IEnumerable<Domain.Entities.Tournament.Tournament>> GetByFacilityAsync(int facilityId)
+        => await _dbSet.Where(t => t.FacilityId == facilityId)
+            .Include(t => t.Sport)
+            .OrderByDescending(t => t.StartDate)
+            .ToListAsync();
+
+    public async Task<Domain.Entities.Tournament.Tournament?> GetWithMatchesAsync(int tournamentId)
+        => await _dbSet
+            .Include(t => t.Teams).ThenInclude(team => team.Athletes)
+            .Include(t => t.Matches)
+            .FirstOrDefaultAsync(t => t.Id == tournamentId);
 }
 
 // ===== Unit of Work =====
@@ -111,7 +128,8 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
     public IUserRepository Users { get; } = new UserRepository(context);
     public IBookingRepository Bookings { get; } = new BookingRepository(context);
     public ICourtRepository Courts { get; } = new CourtRepository(context);
-    public IMatchRoomRepository MatchRooms { get; } = new MatchRoomRepository(context);
+    public ISocialSessionRepository SocialSessions { get; } = new SocialSessionRepository(context);
+    public ITournamentRepository Tournaments { get; } = new TournamentRepository(context);
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
         => await context.SaveChangesAsync(ct);

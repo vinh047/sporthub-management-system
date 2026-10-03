@@ -1,86 +1,205 @@
-# SportHub Management System 🏸
+# 🏸 SportHub Management System
 
-Hệ thống quản lý chuỗi sân thể thao đa chi nhánh với kiến trúc **Layered Monolith (Clean Architecture)**.
+Hệ thống quản lý chuỗi sân thể thao đa chi nhánh, bao gồm đặt sân trực tuyến, vận hành quầy POS, tổ chức buổi chơi tập thể (Social Sessions), giải đấu (Tournaments), và hệ thống tích điểm thành viên (Loyalty CRM).
 
-## 🚀 Giới thiệu
- Mục tiêu là số hóa việc quản lý và đặt sân thể thao, cung cấp trải nghiệm cho:
-- **Người chơi (Player):** Đặt sân, giữ chỗ (hold slot) 10 phút, tìm người ghép kèo, đánh giá uy tín.
-- **Nhân viên (Staff):** Check-in (Quét QR hoặc số điện thoại), quản lý trạng thái sân real-time, đặt sân hộ khách vãng lai.
-- **Quản lý (Admin):** Quản lý chuỗi cơ sở, thiết lập giá động (Dynamic Pricing), xem báo cáo doanh thu.
+---
 
 ## 🛠️ Công nghệ sử dụng
-### Backend (.NET 10)
-- **Kiến trúc:** Layered (API -> Application -> Domain, Infrastructure -> Domain).
-- **ORM:** Entity Framework Core (SQL Server).
-- **Authentication:** JWT Bearer Token.
-- **Real-time:** SignalR (Broadcast trạng thái sân, Push Notification).
-- **Tài liệu API:** OpenAPI (Built-in .NET 10).
 
-### Frontend (React 18 + Vite)
-- **Ngôn ngữ:** TypeScript.
-- **Router:** React Router v6.
-- **State Management:** Zustand (có persist localStorage).
-- **HTTP Client:** Axios (Interceptors xử lý JWT).
-- **Real-time:** `@microsoft/signalr`.
-- **CSS:** Vanilla CSS (CSS Variables cho Dark/Light mode và thiết kế Premium).
+| Phần | Công nghệ |
+|---|---|
+| **Backend** | .NET 10 · Clean Architecture |
+| **Database** | SQL Server (LocalDB khi dev) |
+| **ORM** | Entity Framework Core 10 |
+| **Xác thực** | JWT Bearer Token (BCrypt) |
+| **Real-time** | SignalR WebSockets |
+| **API Docs** | OpenAPI (Built-in .NET 10) |
+| **Frontend** | React 18 + Vite + TypeScript |
+| **Styling** | Tailwind CSS v3 + Vanilla CSS Variables |
+| **State** | Zustand (persist localStorage) |
+| **HTTP** | Axios (tự động gắn JWT) |
 
-## 📂 Cấu trúc dự án
-Dự án đã được phân rã thành các layer rõ ràng để các thành viên dễ dàng làm việc song song mà không bị conflict:
+---
 
-```text
-sporthub-management-system/
-├── backend/
-│   ├── src/
-│   │   ├── SportHub.Domain/         (Core Entities, Enums, Exceptions) - ĐÃ XONG
-│   │   ├── SportHub.Application/    (DTOs, Services, Interfaces) - ĐÃ XONG BASE
-│   │   ├── SportHub.Infrastructure/ (EF Core, JWT, SignalR, BackgroundJobs) - ĐÃ XONG BASE
-│   │   └── SportHub.API/            (Controllers, Middleware, OpenAPI) - ĐÃ XONG BASE
-│   └── SportHub.sln
-├── frontend/
-│   ├── src/
-│   │   ├── api/                     (Axios instance, API services)
-│   │   ├── hooks/                   (SignalR hooks)
-│   │   ├── store/                   (Zustand stores)
-│   │   ├── utils/                   (AuthGuard)
-│   │   ├── App.tsx                  (Router chính)
-│   │   └── index.css                (CSS Base Tokens)
-│   └── package.json
-└── docs/
-    └── srs.md
+## 📦 Yêu cầu cài đặt trước
+
+Đảm bảo máy bạn đã cài đặt đầy đủ các công cụ sau:
+
+- [**.NET 10 SDK**](https://dotnet.microsoft.com/download) → Kiểm tra: `dotnet --version`
+- [**Node.js >= 20**](https://nodejs.org/) → Kiểm tra: `node --version`
+- [**SQL Server LocalDB**](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb) (Có sẵn khi cài Visual Studio) hoặc **SQL Server Express**
+- [**EF Core CLI**](https://learn.microsoft.com/en-us/ef/core/cli/dotnet) → Cài bằng lệnh:
+  ```bash
+  dotnet tool install --global dotnet-ef
+  ```
+
+---
+
+## 🚀 Hướng dẫn cài đặt & Chạy lần đầu
+
+### Bước 1: Clone dự án về máy
+```bash
+git clone https://github.com/vinh047/sporthub-management-system.git
+cd sporthub-management-system
 ```
 
-## ⚙️ Hướng dẫn cài đặt & Chạy dự án
+### Bước 2: Cấu hình Backend
 
-### 1. Database (SQL Server LocalDB)
-Dự án mặc định dùng `(localdb)\mssqllocaldb`. Nếu bạn chưa có, vui lòng cài đặt qua Visual Studio Installer.
+**2.1. Cài đặt JWT Secret (BẮT BUỘC)**
+
+Mở file `backend/src/SportHub.API/appsettings.Development.json`.
+Nếu file chưa tồn tại, tạo mới với nội dung sau:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=SportHubDb;Trusted_Connection=True;MultipleActiveResultSets=true"
+  },
+  "Jwt": {
+    "Secret": "DAY_LA_SECRET_KEY_CUA_BAN_THAY_BANG_CHUOI_DAI_HON_32_KY_TU",
+    "Issuer": "SportHub",
+    "Audience": "SportHubClient",
+    "ExpiryMinutes": "60"
+  },
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Debug"
+    }
+  }
+}
+```
+
+> **⚠️ Lưu ý bảo mật:** File `appsettings.Development.json` đã có trong `.gitignore`. Mỗi thành viên tự tạo file này trên máy mình, **KHÔNG ĐƯỢC commit file này lên Git**.
+
+**2.2. Khởi tạo Database (Chỉ chạy lần đầu tiên)**
+
 ```bash
 cd backend
+
+# Tạo Migration từ Entities (nếu chưa có)
 dotnet ef migrations add InitialCreate --project src/SportHub.Infrastructure --startup-project src/SportHub.API
+
+# Áp dụng Migration, tạo database thực tế
 dotnet ef database update --project src/SportHub.Infrastructure --startup-project src/SportHub.API
 ```
 
-### 2. Chạy Backend
+> Sau khi chạy, database `SportHubDb` sẽ được tạo tự động trên LocalDB của máy bạn.
+
+**2.3. Chạy Backend**
+
 ```bash
 cd backend/src/SportHub.API
 dotnet run
 ```
-API Docs (OpenAPI): `http://localhost:5000/openapi/v1.json`
 
-### 3. Chạy Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Truy cập: `http://localhost:5173`
+Khi thấy dòng `Now listening on: http://localhost:5000` là Backend đã hoạt động.
 
-## 👥 Phân công công việc (10 Tuần)
-Base code đã được thiết lập bởi **Leader**. Team sẽ bắt đầu implement logic từ Tuần 3 theo `base_project_plan.md` ở thư mục Artifacts:
-1. **Leader (Dev 1):** Booking core, Hold Slot, Background Jobs.
-2. **Dev 2:** Auth, Staff Check-in, Manage Staff Profiles.
-3. **Dev 3:** Facility, Court Management, Dynamic Pricing.
-4. **Dev 4:** Match-making (Ghép kèo), Cập nhật điểm uy tín.
-5. **Dev 5:** Frontend Admin Dashboard, Báo cáo thống kê.
+| Endpoint | URL |
+|---|---|
+| API Base URL | `http://localhost:5000` |
+| API Documentation | `http://localhost:5000/openapi/v1.json` |
 
 ---
-*Happy Coding!* 🚀
+
+### Bước 3: Cài đặt & Chạy Frontend
+
+```bash
+cd frontend
+
+# Cài đặt thư viện (chỉ cần chạy lần đầu)
+npm install
+
+# Chạy Development Server
+npm run dev
+```
+
+Truy cập: **`http://localhost:5173`**
+
+---
+
+## 📂 Cấu trúc thư mục dự án
+
+```text
+sporthub-management-system/
+├── backend/
+│   └── src/
+│       ├── SportHub.Domain/         # Entities (DB Tables), Enums, Domain Exceptions
+│       │   └── Entities/
+│       │       ├── Auth/            # User, Role, Permission, StaffProfile
+│       │       ├── Booking/         # Booking, BookingDetail, CheckInLog
+│       │       ├── Facility/        # Facility, Court, Sport, PricePolicy
+│       │       ├── Social/          # SocialSession, SocialParticipant
+│       │       ├── Tournament/      # Tournament, TournamentTeam, TournamentMatch
+│       │       ├── Loyalty/         # Promotion, UserVoucher, LoyaltyHistory
+│       │       ├── Player/          # PlayerProfile, ReputationHistory, SkillRatingHistory
+│       │       ├── Payment/         # PaymentTransaction, PaymentMethod
+│       │       └── Notifications/   # UserNotification, NotificationTemplate
+│       ├── SportHub.Application/    # Business Logic: Services, DTOs, Interfaces
+│       ├── SportHub.Infrastructure/ # EF Core, JWT, SignalR, Background Jobs
+│       └── SportHub.API/            # Controllers, Middleware, Program.cs
+├── frontend/
+│   └── src/
+│       ├── api/         # axiosInstance.ts, authApi.ts, bookingApi.ts, ...
+│       ├── components/  # Các component dùng chung (Button, Modal, Table, ...)
+│       ├── hooks/       # useSignalR.ts, useCourtStatus.ts
+│       ├── pages/       # Các màn hình (LoginPage, BookingPage, AdminDashboard, ...)
+│       ├── store/       # authStore.ts (Zustand)
+│       ├── utils/       # authGuard.tsx (ProtectedRoute)
+│       ├── App.tsx      # Cấu hình Router chính
+│       └── index.css    # Design System (CSS Variables + Tailwind Directives)
+└── docs/
+    ├── backend_development_guide.md  # Hướng dẫn code Backend
+    ├── frontend_development_guide.md # Hướng dẫn code Frontend
+    ├── complex_feature_example.md    # Ví dụ chức năng đầy đủ end-to-end
+    └── task_allocation_plan.md       # Kế hoạch phân chia công việc
+```
+
+---
+
+## 👥 Phân công & Tài liệu tham khảo
+
+| Dev | Module phụ trách | Tài liệu |
+|---|---|---|
+| **Dev 1 (Leader)** | Booking Core, Hold Slot, Background Jobs | [Kế hoạch chi tiết](docs/task_allocation_plan.md) |
+| **Dev 2** | Auth, Staff Profiles, Notifications | [Hướng dẫn Backend](docs/backend_development_guide.md) |
+| **Dev 3** | Facility, Court, Dynamic Pricing | [Hướng dẫn Backend](docs/backend_development_guide.md) |
+| **Dev 4** | Social Sessions, Tournaments, AI Skill Rating | [Ví dụ End-to-End](docs/complex_feature_example.md) |
+| **Dev 5** | Payment, Check-in POS, Admin Dashboard | [Hướng dẫn Frontend](docs/frontend_development_guide.md) |
+
+---
+
+## 🔄 Quy trình Git cho Team
+
+```bash
+# 1. Kéo code mới nhất về trước khi bắt đầu làm việc
+git pull origin main
+
+# 2. Tạo branch mới cho tính năng của bạn (KHÔNG code thẳng trên main)
+git checkout -b feature/ten-tinh-nang-cua-ban
+
+# 3. Code, commit thường xuyên với message rõ ràng
+git add .
+git commit -m "feat: Thêm API đặt sân cho Player"
+
+# 4. Push branch lên và tạo Pull Request để Leader review
+git push origin feature/ten-tinh-nang-cua-ban
+```
+
+> **Quy tắc quan trọng:** Chỉ Leader mới được Merge PR vào nhánh `main`.
+
+---
+
+## ❓ Câu hỏi thường gặp
+
+**Q: Chạy `dotnet run` bị lỗi `Cannot open database "SportHubDb"`?**
+> A: Bạn chưa chạy lệnh tạo database. Hãy chạy `dotnet ef database update` ở Bước 2.2.
+
+**Q: Frontend báo lỗi `Network Error` khi gọi API?**
+> A: Đảm bảo Backend đang chạy ở port `5000`. Kiểm tra file `frontend/src/api/axiosInstance.ts` xem `baseURL` có đang trỏ đúng `http://localhost:5000/api` không.
+
+**Q: Cần thêm một bảng mới vào Database?**
+> A: Tạo Entity mới ở `SportHub.Domain/Entities/`, đăng ký `DbSet` trong `SportHubDbContext.cs`, sau đó chạy lại `dotnet ef migrations add TenMigration` và `dotnet ef database update`.
+
+---
+
+*Happy Coding! 🚀 — SportHub Team*

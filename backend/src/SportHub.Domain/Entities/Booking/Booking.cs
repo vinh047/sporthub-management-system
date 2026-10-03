@@ -10,6 +10,8 @@ public class Booking : BaseEntity
     public string? GuestName { get; set; }           // Khách vãng lai
     public string? GuestPhone { get; set; }
     public decimal TotalAmount { get; set; }
+    public decimal DiscountAmount { get; set; } = 0;
+    public decimal FinalAmount { get; set; }        // = TotalAmount - DiscountAmount
     public DateTime? HoldExpiresAt { get; set; }    // Hết hạn giữ chỗ
     public BookingStatus BookingStatus { get; set; } = BookingStatus.Held;
     public int? CreatedByStaffId { get; set; }      // null nếu tự đặt online

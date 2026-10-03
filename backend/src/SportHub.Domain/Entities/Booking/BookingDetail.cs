@@ -14,5 +14,4 @@ public class BookingDetail : BaseEntity
     public Facility.Court Court { get; set; } = null!;
     public Facility.TimeSlot TimeSlot { get; set; } = null!;
     public ICollection<CheckInLog> CheckInLogs { get; set; } = [];
-    public Matching.MatchRoom? MatchRoom { get; set; }  // 1 booking detail có thể có 1 phòng ghép
 }

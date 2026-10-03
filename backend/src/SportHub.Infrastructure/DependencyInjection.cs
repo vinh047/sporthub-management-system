@@ -27,7 +27,8 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<ICourtRepository, CourtRepository>();
-        services.AddScoped<IMatchRoomRepository, MatchRoomRepository>();
+        services.AddScoped<ISocialSessionRepository, SocialSessionRepository>();
+        services.AddScoped<ITournamentRepository, TournamentRepository>();
 
         // JWT
         services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();

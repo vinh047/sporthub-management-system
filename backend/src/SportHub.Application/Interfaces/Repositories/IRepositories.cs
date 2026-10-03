@@ -8,7 +8,8 @@ public interface IUnitOfWork : IDisposable
     IUserRepository Users { get; }
     IBookingRepository Bookings { get; }
     ICourtRepository Courts { get; }
-    IMatchRoomRepository MatchRooms { get; }
+    ISocialSessionRepository SocialSessions { get; }
+    ITournamentRepository Tournaments { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();
@@ -34,10 +35,16 @@ public interface ICourtRepository : IRepository<Domain.Entities.Facility.Court>
         int facilityId, int sportId, DateOnly date);
 }
 
-public interface IMatchRoomRepository : IRepository<Domain.Entities.Matching.MatchRoom>
+public interface ISocialSessionRepository : IRepository<Domain.Entities.Social.SocialSession>
 {
-    Task<IEnumerable<Domain.Entities.Matching.MatchRoom>> SearchRoomsAsync(
-        int? sportId, int? facilityId, DateOnly? date, string? skillLevel);
+    Task<IEnumerable<Domain.Entities.Social.SocialSession>> GetByFacilityAsync(int facilityId, DateOnly? date);
+    Task<IEnumerable<Domain.Entities.Social.SocialSession>> SearchAsync(int? sportId, decimal? minSkill, decimal? maxSkill);
+}
+
+public interface ITournamentRepository : IRepository<Domain.Entities.Tournament.Tournament>
+{
+    Task<IEnumerable<Domain.Entities.Tournament.Tournament>> GetByFacilityAsync(int facilityId);
+    Task<Domain.Entities.Tournament.Tournament?> GetWithMatchesAsync(int tournamentId);
 }
 
 /// <summary>Generic repository interface</summary>

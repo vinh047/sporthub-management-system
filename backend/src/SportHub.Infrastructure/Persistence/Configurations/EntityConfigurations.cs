@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SportHub.Domain.Entities.Auth;
 using SportHub.Domain.Entities.Facility;
 using SportHub.Domain.Entities.Booking;
-using SportHub.Domain.Entities.Matching;
 
 namespace SportHub.Infrastructure.Persistence.Configurations;
 
@@ -102,33 +101,6 @@ public class BookingConfiguration : IEntityTypeConfiguration<Domain.Entities.Boo
     }
 }
 
-// ===== MATCH ROOM =====
-public class MatchRoomConfiguration : IEntityTypeConfiguration<MatchRoom>
-{
-    public void Configure(EntityTypeBuilder<MatchRoom> builder)
-    {
-        builder.HasIndex(m => m.BookingDetailId).IsUnique(); // 1 BookingDetail - 1 MatchRoom
-        builder.Property(m => m.RoomStatus).HasConversion<string>();
-        builder.Property(m => m.TargetSkillLevel).HasConversion<string>();
-        builder.Property(m => m.ShareFeeEstimate).HasPrecision(18, 2);
-
-        builder.HasOne(m => m.Host)
-            .WithMany()
-            .HasForeignKey(m => m.HostUserId)
-            .OnDelete(DeleteBehavior.Restrict);
-    }
-}
-
-// ===== USER FAVORITE SPORT =====
-public class UserFavoriteSportConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Player.UserFavoriteSport>
-{
-    public void Configure(EntityTypeBuilder<SportHub.Domain.Entities.Player.UserFavoriteSport> builder)
-    {
-        builder.HasKey(u => new { u.UserId, u.SportId });
-        builder.Property(u => u.SelfAssessmentRank).HasConversion<string>();
-    }
-}
-
 // ===== PLAYER PROFILE =====
 public class PlayerProfileConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Player.PlayerProfile>
 {
@@ -137,6 +109,78 @@ public class PlayerProfileConfiguration : IEntityTypeConfiguration<SportHub.Doma
         builder.HasKey(p => p.UserId);
         builder.HasOne(p => p.User).WithOne(u => u.PlayerProfile)
             .HasForeignKey<SportHub.Domain.Entities.Player.PlayerProfile>(p => p.UserId);
-        builder.Property(p => p.SkillLevel).HasConversion<string>();
+        builder.Property(p => p.NumericSkillRating).HasPrecision(4, 2);
+        builder.Property(p => p.SkillLevel).HasMaxLength(20);
+        builder.Property(p => p.CurrentTier).HasMaxLength(20);
+    }
+}
+
+// ===== SOCIAL & TOURNAMENT FK RESTRICTIONS =====
+public class SocialSessionConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Social.SocialSession>
+{
+    public void Configure(EntityTypeBuilder<SportHub.Domain.Entities.Social.SocialSession> builder)
+    {
+        builder.HasOne(s => s.CreatedByStaff).WithMany().HasForeignKey(s => s.CreatedByStaffId).OnDelete(DeleteBehavior.Restrict);
+        builder.Property(s => s.FeePerSlot).HasPrecision(18, 2);
+        builder.Property(s => s.MinSkill).HasPrecision(4, 2);
+        builder.Property(s => s.MaxSkill).HasPrecision(4, 2);
+    }
+}
+
+public class SocialParticipantConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Social.SocialParticipant>
+{
+    public void Configure(EntityTypeBuilder<SportHub.Domain.Entities.Social.SocialParticipant> builder)
+    {
+        builder.HasOne(p => p.User).WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(p => p.Session).WithMany(s => s.Participants).HasForeignKey(p => p.SessionId).OnDelete(DeleteBehavior.Restrict);
+        builder.Property(p => p.PaidAmount).HasPrecision(18, 2);
+    }
+}
+
+public class SocialSessionCourtConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Social.SocialSessionCourt>
+{
+    public void Configure(EntityTypeBuilder<SportHub.Domain.Entities.Social.SocialSessionCourt> builder)
+    {
+        builder.HasOne(c => c.Session).WithMany(s => s.SessionCourts).HasForeignKey(c => c.SessionId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(c => c.Court).WithMany().HasForeignKey(c => c.CourtId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class TournamentConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Tournament.Tournament>
+{
+    public void Configure(EntityTypeBuilder<SportHub.Domain.Entities.Tournament.Tournament> builder)
+    {
+        builder.HasOne(t => t.CreatedByStaff).WithMany().HasForeignKey(t => t.CreatedByStaffId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(t => t.Facility).WithMany().HasForeignKey(t => t.FacilityId).OnDelete(DeleteBehavior.Restrict);
+        builder.Property(t => t.EntryFee).HasPrecision(18, 2);
+    }
+}
+
+public class TournamentTeamConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Tournament.TournamentTeam>
+{
+    public void Configure(EntityTypeBuilder<SportHub.Domain.Entities.Tournament.TournamentTeam> builder)
+    {
+        builder.HasOne(t => t.Tournament).WithMany(t => t.Teams).HasForeignKey(t => t.TournamentId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class TournamentAthleteConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Tournament.TournamentAthlete>
+{
+    public void Configure(EntityTypeBuilder<SportHub.Domain.Entities.Tournament.TournamentAthlete> builder)
+    {
+        builder.HasOne(a => a.Team).WithMany(t => t.Athletes).HasForeignKey(a => a.TeamId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(a => a.User).WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public class TournamentMatchConfiguration : IEntityTypeConfiguration<SportHub.Domain.Entities.Tournament.TournamentMatch>
+{
+    public void Configure(EntityTypeBuilder<SportHub.Domain.Entities.Tournament.TournamentMatch> builder)
+    {
+        builder.HasOne(m => m.Tournament).WithMany(t => t.Matches).HasForeignKey(m => m.TournamentId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(m => m.Court).WithMany().HasForeignKey(m => m.CourtId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(m => m.Team1).WithMany().HasForeignKey(m => m.Team1Id).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(m => m.Team2).WithMany().HasForeignKey(m => m.Team2Id).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(m => m.WinnerTeam).WithMany().HasForeignKey(m => m.WinnerTeamId).OnDelete(DeleteBehavior.Restrict);
     }
 }

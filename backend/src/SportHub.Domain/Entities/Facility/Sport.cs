@@ -10,5 +10,4 @@ public class Sport : BaseEntity
 
     public ICollection<Court> Courts { get; set; } = [];
     public ICollection<PricePolicy> PricePolicies { get; set; } = [];
-    public ICollection<Player.UserFavoriteSport> UserFavoriteSports { get; set; } = [];
 }
