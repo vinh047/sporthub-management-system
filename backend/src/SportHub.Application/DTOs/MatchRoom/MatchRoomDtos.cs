@@ -10,6 +10,8 @@ public record CreateRoomRequest(
     string? Description
 );
 
+public record LeaveRoomRequest(string? Reason);
+
 public record SearchRoomsRequest(
     int? SportId,
     int? FacilityId,

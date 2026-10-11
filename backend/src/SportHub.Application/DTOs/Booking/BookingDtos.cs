@@ -22,6 +22,8 @@ public record CheckInRequest(
     string Channel          // Phone, QRCode, Manual
 );
 
+public record CancelBookingRequest(string Reason);
+
 // --- Responses ---
 
 public record BookingResponse(
