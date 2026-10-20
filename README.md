@@ -140,16 +140,31 @@ Khi thấy dòng `Now listening on: http://localhost:5000` là Backend đã ho�
 ### Bước 3: Cài đặt & Chạy Frontend
 
 ```bash
-cd frontend
-
-# Cài đặt thư viện (chỉ cần chạy lần đầu)
-npm install
+# Từ thư mục gốc dự án, cài đặt toàn bộ workspace
+pnpm install
 
 # Chạy Development Server
-npm run dev
+pnpm dev:frontend
 ```
 
 Truy cập: **`http://localhost:5173`**
+
+### Các lệnh phát triển nhanh
+
+Các lệnh sau được khai báo trong `package.json` ở thư mục gốc:
+
+| Lệnh | Mục đích |
+|---|---|
+| `pnpm setup` | Cài dependencies và khởi động SQL Server Docker |
+| `pnpm dev` | Chạy đồng thời backend và frontend |
+| `pnpm dev:backend` | Chỉ chạy backend .NET |
+| `pnpm dev:frontend` | Chỉ chạy frontend Vite |
+| `pnpm build` | Build backend và frontend |
+| `pnpm lint` | Lint frontend |
+| `pnpm test:backend` | Chạy test backend |
+| `pnpm migrate` | Áp dụng EF Core migrations |
+| `pnpm db:up` / `pnpm db:down` | Bật / tắt SQL Server Docker |
+| `pnpm db:logs` | Xem log SQL Server |
 
 ---
 
