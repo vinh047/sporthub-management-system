@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { ProtectedRoute } from './utils/authGuard';
 import HomePage from './page/user/HomePage';
 import AdminLayout from './layouts/AdminLayout';
+import ReceptionPage from './page/admin/ReceptionPage';
 
 // Thay thế các pages bằng lazy load sau này
 const Login = () => (
@@ -60,6 +61,7 @@ function App() {
           }
         >
           <Route index element={<AdminHome />} />
+          <Route path="reception" element={<ReceptionPage />} />
         </Route>
 
         {/* 404 Catch All */}
