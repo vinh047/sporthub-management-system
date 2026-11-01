@@ -3,6 +3,8 @@ import toast from 'react-hot-toast';
 import { authApi } from '../../api/authApi';
 import type { MeResponse } from '../../api/authApi';
 import { getErrorMessage } from '../../api/errors';
+import { notifyComingSoon, ownerOf } from '../../utils/comingSoon';
+import type { FeatureKey } from '../../utils/comingSoon';
 
 const TIER_LABEL: Record<string, string> = {
   Bronze: 'Đồng', Silver: 'Bạc', Gold: 'Vàng', Platinum: 'Kim Cương',
@@ -16,11 +18,13 @@ const NEXT_TIER: Record<string, { name: string; points: number } | null> = {
   Platinum: null,
 };
 
-const ACTIONS = [
-  { title: 'Đặt sân', description: 'Xem lịch trống, giữ chỗ 10 phút và thanh toán VietQR.', owner: 'TV1' },
-  { title: 'Buổi chơi Social', description: 'Mua vé tham gia buổi giao lưu hợp trình độ.', owner: 'TV4' },
-  { title: 'Giải đấu', description: 'Đăng ký đội và theo dõi nhánh đấu trực tiếp.', owner: 'TV5' },
-  { title: 'Lịch sử đặt sân', description: 'Xem lại đơn đã đặt, hủy và hoàn tiền.', owner: 'TV1' },
+const ACTIONS: { title: string; description: string; feature: FeatureKey }[] = [
+  { title: 'Đặt sân', description: 'Xem lịch trống, giữ chỗ 10 phút và thanh toán VietQR.', feature: 'booking' },
+  { title: 'Buổi chơi Social', description: 'Mua vé tham gia buổi giao lưu hợp trình độ.', feature: 'social' },
+  { title: 'Giải đấu', description: 'Đăng ký đội và theo dõi nhánh đấu trực tiếp.', feature: 'tournaments' },
+  { title: 'Lịch sử đặt sân', description: 'Xem lại đơn đã đặt, hủy và hoàn tiền.', feature: 'myBookings' },
+  { title: 'Ví voucher', description: 'Voucher còn dùng được và lịch sử tích điểm.', feature: 'vouchers' },
+  { title: 'Hồ sơ thể thao', description: 'Lịch sử uy tín và biến động trình độ.', feature: 'sportProfile' },
 ];
 
 /** Trang chủ của người chơi sau khi đăng nhập */
@@ -85,13 +89,18 @@ export default function PlayerHomePage() {
 
       <section>
         <h2 className="text-lg font-semibold mb-3">Bắt đầu</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ACTIONS.map((a) => (
-            <div key={a.title} className="bg-surface border border-border rounded-xl p-5 flex flex-col">
+            <button
+              key={a.title}
+              type="button"
+              onClick={() => notifyComingSoon(a.feature)}
+              className="bg-surface border border-border rounded-xl p-5 flex flex-col text-left hover:border-primary"
+            >
               <h3 className="font-semibold mb-1">{a.title}</h3>
               <p className="text-sm text-muted flex-1">{a.description}</p>
-              <span className="mt-3 text-xs text-muted">Sắp có ({a.owner} đang làm)</span>
-            </div>
+              <span className="mt-3 text-xs text-muted">Sắp có · {ownerOf(a.feature)} đang làm</span>
+            </button>
           ))}
         </div>
       </section>

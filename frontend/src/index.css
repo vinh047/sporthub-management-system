@@ -8,9 +8,9 @@
   --bg-secondary: #f8fafc;
   --text-primary: #0f172a;
   --text-secondary: #64748b;
-  --accent-primary: #3b82f6; /* Vivid Blue */
+  --accent-primary: #b91c1c; /* Đỏ đậm – màu thương hiệu SportHub */
   --accent-secondary: #10b981; /* Emerald */
-  --accent-hover: #2563eb;
+  --accent-hover: #991b1b;
   --danger: #ef4444;
   --warning: #f59e0b;
   --border-light: #e2e8f0;
@@ -22,7 +22,7 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-glow: 0 0 15px rgba(59, 130, 246, 0.5);
+  --shadow-glow: 0 0 15px rgba(185, 28, 28, 0.45);
 
   /* Border Radius */
   --radius-sm: 0.375rem;

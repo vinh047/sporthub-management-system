@@ -2,17 +2,23 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import SystemStatus from '../../components/SystemStatus';
 import TodayStats from '../../components/TodayStats';
+import { notifyComingSoon, ownerOf } from '../../utils/comingSoon';
+import type { FeatureKey } from '../../utils/comingSoon';
 
-// Các phân hệ quản trị; "owner" = người phụ trách khi trang chưa có
-const MODULES: { title: string; description: string; to?: string; owner?: string }[] = [
+// Các phân hệ quản trị; có "feature" = chưa làm, bấm hiện người phụ trách
+const MODULES: { title: string; description: string; to?: string; feature?: FeatureKey }[] = [
   { title: 'Lễ tân / Check-in', description: 'Khách đặt sân hôm nay, check-in tại quầy', to: '/admin/reception' },
   { title: 'Bán sân tại quầy', description: 'Đặt sân nhanh cho khách vãng lai', to: '/admin/pos' },
-  { title: 'Cơ sở & sân', description: 'Thêm, sửa, ngừng hoạt động cơ sở và sân con', owner: 'TV3' },
-  { title: 'Bảng giá', description: 'Giá giờ thường, cao điểm, phụ thu cuối tuần', owner: 'TV3' },
-  { title: 'Khuyến mãi', description: 'Mã giảm giá, voucher giờ thấp điểm', owner: 'TV3' },
-  { title: 'Nhân viên & phân quyền', description: 'Gán chi nhánh, cấp hoặc tước quyền', owner: 'TV2' },
-  { title: 'Giải đấu', description: 'Tạo giải, sinh nhánh đấu, nhập tỉ số', owner: 'TV5' },
-  { title: 'Báo cáo', description: 'Doanh thu, tỷ lệ lấp đầy sân', owner: 'TV5' },
+  { title: 'Cơ sở & sân', description: 'Thêm, sửa, ngừng hoạt động cơ sở và sân con', feature: 'facilities' },
+  { title: 'Bảng giá', description: 'Giá giờ thường, cao điểm, phụ thu cuối tuần', feature: 'pricing' },
+  { title: 'Khóa sân bảo trì', description: 'Khóa sân, báo đơn bị ảnh hưởng', feature: 'maintenance' },
+  { title: 'Khuyến mãi', description: 'Mã giảm giá, voucher giờ thấp điểm', feature: 'promotions' },
+  { title: 'Nhân viên & phân quyền', description: 'Gán chi nhánh, cấp hoặc tước quyền', feature: 'staffManage' },
+  { title: 'Người chơi', description: 'Tìm kiếm, khóa hoặc mở khóa tài khoản', feature: 'players' },
+  { title: 'Buổi chơi Social', description: 'Tạo buổi, bán vé, điểm danh', feature: 'social' },
+  { title: 'Giải đấu', description: 'Tạo giải, sinh nhánh đấu, nhập tỉ số', feature: 'tournamentManage' },
+  { title: 'Báo cáo', description: 'Doanh thu, tỷ lệ lấp đầy sân', feature: 'reports' },
+  { title: 'Thông báo & CRM', description: 'Mẫu thông báo, tặng voucher tự động', feature: 'notifications' },
 ];
 
 /** Màn hình tổng quan của quản trị viên */
@@ -50,11 +56,16 @@ export default function AdminHomePage() {
                 <p className="text-sm text-muted">{m.description}</p>
               </Link>
             ) : (
-              <div key={m.title} className="bg-surface border border-border rounded-xl p-5 opacity-70">
+              <button
+                key={m.title}
+                type="button"
+                onClick={() => m.feature && notifyComingSoon(m.feature)}
+                className="bg-surface border border-dashed border-border rounded-xl p-5 text-left hover:border-primary"
+              >
                 <h3 className="font-semibold mb-1">{m.title}</h3>
                 <p className="text-sm text-muted">{m.description}</p>
-                <p className="text-xs text-muted mt-2">Sắp có ({m.owner})</p>
-              </div>
+                <p className="text-xs text-muted mt-2">Sắp có · {m.feature && ownerOf(m.feature)}</p>
+              </button>
             )
           )}
         </div>

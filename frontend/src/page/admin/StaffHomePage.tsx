@@ -1,6 +1,16 @@
 import { Link } from 'react-router-dom';
 import TodayStats from '../../components/TodayStats';
 import { useAuthStore } from '../../store/authStore';
+import { notifyComingSoon } from '../../utils/comingSoon';
+import type { FeatureKey } from '../../utils/comingSoon';
+
+// Việc của nhân viên chưa làm: bấm hiện người phụ trách
+const SOON_ACTIONS: { label: string; feature: FeatureKey }[] = [
+  { label: 'Lịch sân hôm nay', feature: 'schedule' },
+  { label: 'Khóa sân bảo trì', feature: 'maintenance' },
+  { label: 'Điểm danh Social', feature: 'socialCheckin' },
+  { label: 'Nhập tỉ số giải đấu', feature: 'tournamentManage' },
+];
 
 const TODAY_LABEL = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -22,6 +32,17 @@ export default function StaffHomePage() {
       <section className="flex flex-wrap gap-3">
         <Link to="/staff/reception" className="btn btn-primary px-5 py-2.5">Check-in khách</Link>
         <Link to="/staff/pos" className="btn px-5 py-2.5 border border-border bg-surface text-text">Bán sân tại quầy</Link>
+        {SOON_ACTIONS.map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            onClick={() => notifyComingSoon(a.feature)}
+            className="btn px-5 py-2.5 border border-dashed border-border text-muted"
+            title="Chưa làm – bấm để xem ai phụ trách"
+          >
+            {a.label}
+          </button>
+        ))}
       </section>
 
       {facilityId ? (

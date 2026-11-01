@@ -17,7 +17,7 @@ function App() {
     <BrowserRouter>
       {/* Cấu hình Toast Notification */}
       <Toaster
-        position="top-right"
+        position="top-center"
         toastOptions={{
           style: {
             background: 'var(--bg-secondary)',
