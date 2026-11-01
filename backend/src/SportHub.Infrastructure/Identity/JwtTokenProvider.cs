@@ -16,19 +16,23 @@ public class JwtTokenProvider(IConfiguration config) : IJwtTokenProvider
     private readonly string _audience = config["Jwt:Audience"] ?? "SportHubClient";
     private readonly int _expiryMinutes = int.Parse(config["Jwt:ExpiryMinutes"] ?? "60");
 
-    public (string AccessToken, DateTime ExpiresAt) GenerateToken(User user, string role)
+    public (string AccessToken, DateTime ExpiresAt) GenerateToken(User user, string role, int? facilityId = null)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expires = DateTime.UtcNow.AddMinutes(_expiryMinutes);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.FullName),
-            new Claim(ClaimTypes.MobilePhone, user.PhoneNumber),
-            new Claim(ClaimTypes.Role, role),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name, user.FullName),
+            new(ClaimTypes.MobilePhone, user.PhoneNumber),
+            new(ClaimTypes.Role, role),
         };
+
+        // Staff mang theo cơ sở được phân công
+        if (facilityId is not null)
+            claims.Add(new Claim("facilityId", facilityId.Value.ToString()));
 
         var token = new JwtSecurityToken(
             issuer: _issuer,
