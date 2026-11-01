@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { checkInApi } from '../../api/checkInApi';
 import type { CheckInItem } from '../../api/checkInApi';
 import { getErrorMessage } from '../../api/errors';
+import { useAuthStore } from '../../store/authStore';
 
 const hhmm = (time: string) => time.slice(0, 5);
 const TODAY_LABEL = new Date().toLocaleDateString('vi-VN');
@@ -13,8 +14,8 @@ const toLocalTime = (iso: string) =>
   new Date(iso.endsWith('Z') ? iso : `${iso}Z`).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 
 export default function ReceptionPage() {
-  // TODO: lấy cơ sở từ thông tin nhân viên khi TV2 thêm FacilityId vào token
-  const [facilityId, setFacilityId] = useState(1);
+  // Staff mặc định xem cơ sở được phân công; Admin chọn cơ sở bất kỳ
+  const [facilityId, setFacilityId] = useState(() => useAuthStore.getState().user?.facilityId ?? 1);
   const [rows, setRows] = useState<CheckInItem[]>([]);
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(true);

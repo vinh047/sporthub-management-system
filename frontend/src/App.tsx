@@ -2,30 +2,21 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ProtectedRoute } from './utils/authGuard';
 import HomePage from './page/user/HomePage';
+import LoginPage from './page/auth/LoginPage';
+import RegisterPage from './page/auth/RegisterPage';
+import PlayerLayout from './layouts/PlayerLayout';
+import PlayerHomePage from './page/user/PlayerHomePage';
 import AdminLayout from './layouts/AdminLayout';
+import StaffHomePage from './page/admin/StaffHomePage';
+import AdminHomePage from './page/admin/AdminHomePage';
 import ReceptionPage from './page/admin/ReceptionPage';
 import PosPage from './page/admin/PosPage';
-
-// Thay thế các pages bằng lazy load sau này
-const Login = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <div className="glass p-8 rounded-lg shadow-lg max-w-md w-full animate-fade-in border border-border">
-      <h2 className="text-2xl font-bold text-center text-text mb-6">Đăng Nhập SportHub</h2>
-      <input className="w-full p-3 mb-4 bg-surface text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Số điện thoại" />
-      <input className="w-full p-3 mb-6 bg-surface text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary" type="password" placeholder="Mật khẩu" />
-      <button className="btn btn-primary w-full py-3 rounded text-white font-semibold shadow-md hover:shadow-lg transition">Đăng Nhập</button>
-    </div>
-  </div>
-);
-const Register = () => <div className="p-8 animate-fade-in"><h1>Register Page (Placeholder)</h1></div>;
-const Dashboard = () => <div className="p-8 animate-fade-in"><h1>Dashboard (Placeholder)</h1></div>;
-const AdminHome = () => <h1 className="text-xl font-semibold">Tổng quan</h1>;
 
 function App() {
   return (
     <BrowserRouter>
       {/* Cấu hình Toast Notification */}
-      <Toaster 
+      <Toaster
         position="top-right"
         toastOptions={{
           style: {
@@ -33,35 +24,51 @@ function App() {
             color: 'var(--text-primary)',
             border: '1px solid var(--border-light)'
           }
-        }} 
+        }}
       />
 
       <Routes>
-        {/* Public Routes */}
+        {/* Công khai */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-        {/* Protected Player Routes */}
-        <Route 
-          path="/player/*" 
+        {/* Người chơi */}
+        <Route
+          path="/player"
           element={
             <ProtectedRoute allowedRoles={['PLAYER']}>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Trang quản trị dùng chung cho ADMIN và STAFF */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute allowedRoles={['ADMIN', 'STAFF']}>
-              <AdminLayout />
+              <PlayerLayout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<AdminHome />} />
+          <Route index element={<PlayerHomePage />} />
+        </Route>
+
+        {/* Nhân viên (Admin cũng vào được) */}
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute allowedRoles={['STAFF', 'ADMIN']}>
+              <AdminLayout area="staff" />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<StaffHomePage />} />
+          <Route path="reception" element={<ReceptionPage />} />
+          <Route path="pos" element={<PosPage />} />
+        </Route>
+
+        {/* Quản trị */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <AdminLayout area="admin" />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AdminHomePage />} />
           <Route path="reception" element={<ReceptionPage />} />
           <Route path="pos" element={<PosPage />} />
         </Route>
