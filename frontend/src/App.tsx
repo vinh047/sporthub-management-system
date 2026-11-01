@@ -4,6 +4,7 @@ import { ProtectedRoute } from './utils/authGuard';
 import HomePage from './page/user/HomePage';
 import AdminLayout from './layouts/AdminLayout';
 import ReceptionPage from './page/admin/ReceptionPage';
+import PosPage from './page/admin/PosPage';
 
 // Thay thế các pages bằng lazy load sau này
 const Login = () => (
@@ -62,6 +63,7 @@ function App() {
         >
           <Route index element={<AdminHome />} />
           <Route path="reception" element={<ReceptionPage />} />
+          <Route path="pos" element={<PosPage />} />
         </Route>
 
         {/* 404 Catch All */}
