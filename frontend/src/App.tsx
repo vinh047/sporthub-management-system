@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ProtectedRoute } from './utils/authGuard';
+import HomePage from './page/user/HomePage';
 
 // Thay thế các pages bằng lazy load sau này
 const Login = () => (
@@ -14,7 +15,6 @@ const Login = () => (
   </div>
 );
 const Register = () => <div className="p-8 animate-fade-in"><h1>Register Page (Placeholder)</h1></div>;
-const Home = () => <div className="p-8 animate-fade-in"><h1>Trang chủ (Placeholder)</h1></div>;
 const Dashboard = () => <div className="p-8 animate-fade-in"><h1>Dashboard (Placeholder)</h1></div>;
 
 function App() {
@@ -34,7 +34,7 @@ function App() {
 
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 

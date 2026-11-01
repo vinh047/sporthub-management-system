@@ -24,6 +24,7 @@ builder.Services.AddSwaggerDocumentation();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddSignalR();
+builder.Services.AddApiHealthChecks();
 
 // Clean Architecture Layers
 builder.Services.AddApplicationServices();
