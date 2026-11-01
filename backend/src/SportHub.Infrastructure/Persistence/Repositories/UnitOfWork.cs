@@ -12,6 +12,7 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
     public ICourtRepository Courts { get; } = new CourtRepository(context);
     public ISocialSessionRepository SocialSessions { get; } = new SocialSessionRepository(context);
     public ITournamentRepository Tournaments { get; } = new TournamentRepository(context);
+    public ICheckInRepository CheckIns { get; } = new CheckInRepository(context);
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
         => await context.SaveChangesAsync(ct);

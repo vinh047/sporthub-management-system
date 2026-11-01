@@ -16,12 +16,6 @@ public record ConfirmBookingRequest(
     string? ReferenceCode   // Mã chuyển khoản / QR code
 );
 
-public record CheckInRequest(
-    string PhoneNumberOrBookingCode,
-    int BookingDetailId,
-    string Channel          // Phone, QRCode, Manual
-);
-
 public record CancelBookingRequest(string Reason);
 
 // --- Responses ---
