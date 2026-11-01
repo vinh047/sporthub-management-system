@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ProtectedRoute } from './utils/authGuard';
 import HomePage from './page/user/HomePage';
+import AdminLayout from './layouts/AdminLayout';
 
 // Thay thế các pages bằng lazy load sau này
 const Login = () => (
@@ -16,6 +17,7 @@ const Login = () => (
 );
 const Register = () => <div className="p-8 animate-fade-in"><h1>Register Page (Placeholder)</h1></div>;
 const Dashboard = () => <div className="p-8 animate-fade-in"><h1>Dashboard (Placeholder)</h1></div>;
+const AdminHome = () => <h1 className="text-xl font-semibold">Tổng quan</h1>;
 
 function App() {
   return (
@@ -48,25 +50,17 @@ function App() {
           } 
         />
 
-        {/* Protected Staff Routes */}
-        <Route 
-          path="/staff/*" 
+        {/* Trang quản trị dùng chung cho ADMIN và STAFF */}
+        <Route
+          path="/admin"
           element={
-            <ProtectedRoute allowedRoles={['STAFF', 'ADMIN']}>
-              <Dashboard />
+            <ProtectedRoute allowedRoles={['ADMIN', 'STAFF']}>
+              <AdminLayout />
             </ProtectedRoute>
-          } 
-        />
-
-        {/* Protected Admin Routes */}
-        <Route 
-          path="/admin/*" 
-          element={
-            <ProtectedRoute allowedRoles={['ADMIN']}>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
+          }
+        >
+          <Route index element={<AdminHome />} />
+        </Route>
 
         {/* 404 Catch All */}
         <Route path="*" element={<Navigate to="/" replace />} />
