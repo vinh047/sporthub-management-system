@@ -2,11 +2,20 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { LoaderCircle, Lock, LogIn, Phone } from 'lucide-react';
 import { authApi } from '../../api/authApi';
 import { getErrorMessage } from '../../api/errors';
+import AuthShell from '../../components/AuthShell';
+import FormField from '../../components/FormField';
 import { useAuthStore } from '../../store/authStore';
 import { homePathFor } from '../../utils/roleHome';
 import { saveSession } from '../../utils/session';
+
+// Tài khoản mẫu do DataSeeder tạo (chỉ hiện khi chạy dev)
+const DEMO_ACCOUNTS = [
+  { role: 'Quản trị', phone: '0900000000', password: 'Admin@123' },
+  { role: 'Nhân viên', phone: '0900000001', password: 'Staff@123' },
+];
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -33,51 +42,63 @@ export default function LoginPage() {
     }
   };
 
-  const inputClass =
-    'w-full p-3 bg-surface text-text border border-border rounded focus:outline-none focus:ring-2 focus:ring-primary';
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="glass p-8 rounded-lg shadow-lg max-w-md w-full animate-fade-in border border-border space-y-4"
-      >
-        <div className="text-center">
-          <Link to="/" className="text-2xl font-bold text-primary">SportHub</Link>
-          <h1 className="text-lg font-semibold text-text mt-2">Đăng nhập</h1>
-          <p className="text-sm text-muted">Dùng chung cho người chơi, nhân viên và quản trị viên</p>
-        </div>
-
-        <input
-          className={inputClass}
-          placeholder="Số điện thoại"
+    <AuthShell title="Chào mừng trở lại" subtitle="Đăng nhập để đặt sân và quản lý tài khoản của bạn">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <FormField
+          label="Số điện thoại"
+          icon={Phone}
+          placeholder="VD: 0912345678"
           inputMode="tel"
           autoComplete="username"
           value={phoneNumber}
           onChange={(e) => setPhoneNumber(e.target.value)}
           required
         />
-        <input
-          className={inputClass}
+        <FormField
+          label="Mật khẩu"
+          icon={Lock}
           type="password"
-          placeholder="Mật khẩu"
+          placeholder="Nhập mật khẩu"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+
         <button
           type="submit"
           disabled={submitting}
-          className="btn btn-primary w-full py-3 font-semibold disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 py-3.5 font-semibold text-white shadow-lg shadow-red-600/25 transition hover:from-red-800 hover:to-red-700 disabled:opacity-60"
         >
+          {submitting ? <LoaderCircle size={18} className="animate-spin" /> : <LogIn size={18} />}
           {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </button>
 
-        <p className="text-sm text-center text-muted">
-          Chưa có tài khoản? <Link to="/register" className="font-medium">Đăng ký</Link>
+        <p className="text-center text-sm text-gray-500">
+          Chưa có tài khoản?{' '}
+          <Link to="/register" className="font-semibold text-red-700 hover:text-red-800">Đăng ký ngay</Link>
         </p>
       </form>
-    </div>
+
+      {import.meta.env.DEV && (
+        <div className="mt-8 rounded-xl border border-dashed border-red-200 bg-red-50/60 p-4 text-sm">
+          <p className="mb-2 font-semibold text-red-800">Tài khoản mẫu (chỉ hiện khi chạy dev)</p>
+          <div className="space-y-1.5">
+            {DEMO_ACCOUNTS.map((a) => (
+              <button
+                key={a.phone}
+                type="button"
+                onClick={() => { setPhoneNumber(a.phone); setPassword(a.password); }}
+                className="flex w-full justify-between rounded-lg px-2 py-1 text-left text-gray-700 hover:bg-red-100/70"
+              >
+                <span>{a.role}</span>
+                <span className="font-mono text-gray-500">{a.phone} / {a.password}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </AuthShell>
   );
 }

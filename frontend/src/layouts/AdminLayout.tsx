@@ -1,115 +1,156 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
+import {
+  BadgeDollarSign, Building, CalendarDays, ChartColumn, ClipboardCheck, LayoutDashboard, Megaphone,
+  ScanLine, Store, Swords, Trophy, UserCog, Users, Wrench,
+} from 'lucide-react';
+import Brand from '../components/Brand';
+import UserMenu from '../components/UserMenu';
 import { notifyComingSoon, ownerOf } from '../utils/comingSoon';
 import type { FeatureKey } from '../utils/comingSoon';
 
 type Area = 'staff' | 'admin';
-type MenuItem = { to: string; label: string; feature?: FeatureKey };
+type MenuItem = { to: string; label: string; icon: LucideIcon; feature?: FeatureKey };
+type MenuGroup = { title: string; items: MenuItem[] };
 
 // Mỗi người thêm mục menu của mình vào đây.
 // Có "feature" = trang chưa làm: bấm sẽ hiện người phụ trách. Làm xong thì xóa "feature" và thêm route.
-const MENUS: Record<Area, MenuItem[]> = {
+const MENUS: Record<Area, MenuGroup[]> = {
   staff: [
-    { to: '/staff', label: 'Tổng quan ca làm' },
-    { to: '/staff/reception', label: 'Lễ tân / Check-in' },
-    { to: '/staff/pos', label: 'Bán sân tại quầy' },
-    { to: '/staff/schedule', label: 'Lịch sân hôm nay', feature: 'schedule' },
-    { to: '/staff/maintenance', label: 'Khóa sân bảo trì', feature: 'maintenance' },
-    { to: '/staff/social', label: 'Điểm danh Social', feature: 'socialCheckin' },
-    { to: '/staff/tournaments', label: 'Nhập tỉ số giải đấu', feature: 'tournamentManage' },
+    {
+      title: 'Ca làm',
+      items: [
+        { to: '/staff', label: 'Tổng quan ca làm', icon: LayoutDashboard },
+        { to: '/staff/reception', label: 'Lễ tân / Check-in', icon: ScanLine },
+        { to: '/staff/pos', label: 'Bán sân tại quầy', icon: Store },
+        { to: '/staff/schedule', label: 'Lịch sân hôm nay', icon: CalendarDays, feature: 'schedule' },
+      ],
+    },
+    {
+      title: 'Vận hành',
+      items: [
+        { to: '/staff/maintenance', label: 'Khóa sân bảo trì', icon: Wrench, feature: 'maintenance' },
+        { to: '/staff/social', label: 'Điểm danh Social', icon: ClipboardCheck, feature: 'socialCheckin' },
+        { to: '/staff/tournaments', label: 'Nhập tỉ số giải đấu', icon: Swords, feature: 'tournamentManage' },
+      ],
+    },
   ],
   admin: [
-    { to: '/admin', label: 'Tổng quan' },
-    { to: '/admin/reception', label: 'Lễ tân / Check-in' },
-    { to: '/admin/pos', label: 'Bán sân tại quầy' },
-    { to: '/admin/facilities', label: 'Cơ sở & sân', feature: 'facilities' },
-    { to: '/admin/pricing', label: 'Bảng giá', feature: 'pricing' },
-    { to: '/admin/maintenance', label: 'Khóa sân bảo trì', feature: 'maintenance' },
-    { to: '/admin/promotions', label: 'Khuyến mãi', feature: 'promotions' },
-    { to: '/admin/staff', label: 'Nhân viên & phân quyền', feature: 'staffManage' },
-    { to: '/admin/players', label: 'Người chơi', feature: 'players' },
-    { to: '/admin/social', label: 'Buổi chơi Social', feature: 'social' },
-    { to: '/admin/tournaments', label: 'Giải đấu', feature: 'tournamentManage' },
-    { to: '/admin/reports', label: 'Báo cáo', feature: 'reports' },
+    {
+      title: 'Tổng quan',
+      items: [
+        { to: '/admin', label: 'Bảng điều khiển', icon: LayoutDashboard },
+        { to: '/admin/reports', label: 'Báo cáo', icon: ChartColumn, feature: 'reports' },
+      ],
+    },
+    {
+      title: 'Vận hành',
+      items: [
+        { to: '/admin/reception', label: 'Lễ tân / Check-in', icon: ScanLine },
+        { to: '/admin/pos', label: 'Bán sân tại quầy', icon: Store },
+        { to: '/admin/maintenance', label: 'Khóa sân bảo trì', icon: Wrench, feature: 'maintenance' },
+      ],
+    },
+    {
+      title: 'Danh mục',
+      items: [
+        { to: '/admin/facilities', label: 'Cơ sở & sân', icon: Building, feature: 'facilities' },
+        { to: '/admin/pricing', label: 'Bảng giá', icon: BadgeDollarSign, feature: 'pricing' },
+        { to: '/admin/promotions', label: 'Khuyến mãi', icon: Megaphone, feature: 'promotions' },
+      ],
+    },
+    {
+      title: 'Hoạt động',
+      items: [
+        { to: '/admin/social', label: 'Buổi chơi Social', icon: Users, feature: 'social' },
+        { to: '/admin/tournaments', label: 'Giải đấu', icon: Trophy, feature: 'tournamentManage' },
+      ],
+    },
+    {
+      title: 'Tài khoản',
+      items: [
+        { to: '/admin/staff', label: 'Nhân viên & phân quyền', icon: UserCog, feature: 'staffManage' },
+        { to: '/admin/players', label: 'Người chơi', icon: Users, feature: 'players' },
+      ],
+    },
   ],
 };
 
-const TITLES: Record<Area, string> = { staff: 'SportHub Staff', admin: 'SportHub Admin' };
+const SUBTITLE: Record<Area, string> = { staff: 'Khu vực nhân viên', admin: 'Khu vực quản trị' };
 
 /** Khung trang cho nhân viên (/staff) và quản trị (/admin) */
 export default function AdminLayout({ area }: { area: Area }) {
-  const { user, logout } = useAuthStore();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
-
-  const renderItem = (m: MenuItem, compact: boolean) => {
-    const base = compact ? 'px-3 py-1.5 rounded-md text-sm whitespace-nowrap' : 'px-3 py-2 rounded-md text-sm';
-    if (m.feature) {
-      const feature = m.feature;
-      return (
-        <button
-          key={m.to}
-          type="button"
-          onClick={() => notifyComingSoon(feature)}
-          className={`${base} ${compact ? '' : 'w-full flex justify-between'} text-muted hover:bg-background text-left`}
-          title="Chưa làm – bấm để xem ai phụ trách"
-        >
-          {m.label}
-          {!compact && <span className="text-xs">{ownerOf(feature)}</span>}
-        </button>
-      );
-    }
-    return (
-      <NavLink
-        key={m.to}
-        to={m.to}
-        end={m.to === `/${area}`}
-        className={({ isActive }) =>
-          `${base} ${compact ? '' : 'block'} ${isActive ? 'bg-primary text-white' : 'text-text hover:bg-background'}`
-        }
-      >
-        {m.label}
-      </NavLink>
-    );
-  };
+  const { pathname } = useLocation();
+  const allItems = MENUS[area].flatMap((g) => g.items);
+  const current = allItems.find((m) => !m.feature && m.to === pathname) ?? allItems[0];
 
   return (
-    <div className="min-h-screen flex bg-background text-text">
-      <aside className="w-64 shrink-0 border-r border-border bg-surface hidden md:flex flex-col">
-        <div className="px-5 py-4 flex items-center gap-2">
-          <span className="w-8 h-8 rounded-lg bg-primary text-white font-bold grid place-items-center">S</span>
-          <span className="text-lg font-bold text-primary">{TITLES[area]}</span>
+    <div className="min-h-screen flex bg-white text-gray-900">
+      <aside className="sticky top-0 h-screen w-72 shrink-0 border-r border-gray-100 bg-white hidden md:flex flex-col">
+        <div className="px-5 h-16 flex items-center border-b border-gray-100">
+          <Brand size="sm" />
         </div>
-        <nav className="flex-1 px-3 space-y-1 pb-4">{MENUS[area].map((m) => renderItem(m, false))}</nav>
+        <p className="px-5 pt-4 text-xs font-medium text-gray-400">{SUBTITLE[area]}</p>
+        <nav className="flex-1 overflow-y-auto px-3 pb-6">
+          {MENUS[area].map((group) => (
+            <div key={group.title} className="mt-4">
+              <p className="px-3 mb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{group.title}</p>
+              <div className="space-y-0.5">
+                {group.items.map((m) => <SideItem key={m.to} item={m} area={area} />)}
+              </div>
+            </div>
+          ))}
+        </nav>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-border flex items-center justify-between px-4">
-          <span className="font-semibold">{area === 'admin' ? 'Quản trị' : 'Nhân viên'}</span>
-          <div className="flex items-center gap-3 text-sm">
-            <button type="button" onClick={() => notifyComingSoon('notifications')} className="btn border border-border text-sm" title="Thông báo">
-              🔔
-            </button>
-            <span className="text-muted hidden sm:inline">
-              {user?.fullName} · {user?.role}
-            </span>
-            <button className="btn border border-border text-sm" onClick={handleLogout}>
-              Đăng xuất
-            </button>
+      <div className="flex-1 flex flex-col min-w-0 bg-white">
+        <header className="sticky top-0 z-20 h-16 border-b border-gray-100 bg-white/90 backdrop-blur flex items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="md:hidden"><Brand size="sm" /></span>
+            <h1 className="hidden md:block text-lg font-semibold truncate">{current.label}</h1>
           </div>
+          <UserMenu />
         </header>
-        {/* Menu ngang cho màn hình nhỏ (sidebar bị ẩn) */}
-        <nav className="md:hidden flex gap-1 overflow-x-auto border-b border-border px-2 py-2">
-          {MENUS[area].map((m) => renderItem(m, true))}
+        {/* Menu cuộn ngang cho màn hình nhỏ */}
+        <nav className="md:hidden flex gap-1 overflow-x-auto [scrollbar-width:none] border-b border-gray-100 bg-white px-2 py-2">
+          {allItems.map((m) => <SideItem key={m.to} item={m} area={area} compact />)}
         </nav>
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
+        <main className="flex-1 p-4 md:p-8">
           <Outlet />
         </main>
       </div>
     </div>
+  );
+}
+
+function SideItem({ item, area, compact = false }: { item: MenuItem; area: Area; compact?: boolean }) {
+  const { to, label, icon: Icon, feature } = item;
+  const base = `flex items-center gap-3 rounded-xl text-sm font-medium transition ${compact ? 'px-3 py-1.5 whitespace-nowrap' : 'px-3 py-2.5 w-full'}`;
+
+  if (feature) {
+    return (
+      <button
+        type="button"
+        onClick={() => notifyComingSoon(feature)}
+        className={`${base} text-gray-500 hover:bg-gray-50 hover:text-gray-800 text-left`}
+        title="Chưa làm – bấm để xem ai phụ trách"
+      >
+        <Icon size={18} className="shrink-0" />
+        <span className="flex-1">{label}</span>
+        {!compact && <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">{ownerOf(feature)}</span>}
+      </button>
+    );
+  }
+  return (
+    <NavLink
+      to={to}
+      end={to === `/${area}`}
+      className={({ isActive }) =>
+        `${base} ${isActive ? 'bg-red-50 text-red-700 shadow-[inset_3px_0_0_0] shadow-red-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`
+      }
+    >
+      <Icon size={18} className="shrink-0" />
+      <span className="flex-1">{label}</span>
+    </NavLink>
   );
 }

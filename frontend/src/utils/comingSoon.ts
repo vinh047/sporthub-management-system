@@ -1,4 +1,6 @@
+import { createElement } from 'react';
 import toast from 'react-hot-toast';
+import { Construction } from 'lucide-react';
 
 const MEMBERS = {
   TV1: 'Nguyễn Đức Vinh',
@@ -43,7 +45,7 @@ export function notifyComingSoon(key: FeatureKey) {
   const f = FEATURES[key];
   toast(`${f.name} đang được làm\nPhụ trách: ${f.owner} – ${MEMBERS[f.owner]} (${f.uc})`, {
     id: `soon-${key}`,
-    icon: '🚧',
+    icon: createElement(Construction, { size: 20, className: 'text-amber-500 shrink-0' }),
     duration: 4000,
     style: { whiteSpace: 'pre-line' },
   });

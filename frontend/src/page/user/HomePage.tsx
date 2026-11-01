@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import type { LucideIcon } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock, Crown, Mail, MapPin, Menu, Phone, Search, Trophy, Users, X } from 'lucide-react';
+import Brand from '../../components/Brand';
 import SystemStatus from '../../components/SystemStatus';
 import { useAuthStore } from '../../store/authStore';
 import { homePathFor } from '../../utils/roleHome';
@@ -36,11 +39,11 @@ const STATS = [
   { value: 'Live', label: 'Lịch sân thời gian thực' },
 ];
 
-const SERVICES: { title: string; description: string; feature: FeatureKey; accent: string }[] = [
-  { title: 'Đặt sân online', description: 'Xem lịch trống theo thời gian thực, giữ chỗ 10 phút và thanh toán bằng VietQR.', feature: 'booking', accent: 'bg-red-600' },
-  { title: 'Buổi chơi Social', description: 'Mua vé tham gia buổi giao lưu hợp trình độ, không lo thiếu người.', feature: 'social', accent: 'bg-amber-500' },
-  { title: 'Giải đấu', description: 'Đăng ký đội, theo dõi nhánh đấu và tỉ số cập nhật trực tiếp.', feature: 'tournaments', accent: 'bg-emerald-600' },
-  { title: 'Ưu đãi thành viên', description: 'Tích điểm mỗi lần đặt sân, lên hạng Bạc, Vàng, Kim Cương để được giảm giá.', feature: 'vouchers', accent: 'bg-purple-600' },
+const SERVICES: { title: string; description: string; feature: FeatureKey; icon: LucideIcon; tint: string }[] = [
+  { title: 'Đặt sân online', description: 'Xem lịch trống theo thời gian thực, giữ chỗ 10 phút và thanh toán bằng VietQR.', feature: 'booking', icon: CalendarDays, tint: 'bg-red-50 text-red-700' },
+  { title: 'Buổi chơi Social', description: 'Mua vé tham gia buổi giao lưu hợp trình độ, không lo thiếu người.', feature: 'social', icon: Users, tint: 'bg-amber-50 text-amber-600' },
+  { title: 'Giải đấu', description: 'Đăng ký đội, theo dõi nhánh đấu và tỉ số cập nhật trực tiếp.', feature: 'tournaments', icon: Trophy, tint: 'bg-emerald-50 text-emerald-600' },
+  { title: 'Ưu đãi thành viên', description: 'Tích điểm mỗi lần đặt sân, lên hạng Bạc, Vàng, Kim Cương để được giảm giá.', feature: 'vouchers', icon: Crown, tint: 'bg-purple-50 text-purple-600' },
 ];
 
 const STEPS = [
@@ -55,8 +58,8 @@ function TopBar() {
     <div className="bg-[#2a0707] text-red-50/90 text-sm">
       <div className="max-w-6xl mx-auto px-4 h-10 flex items-center justify-between gap-4">
         <div className="flex items-center gap-5 min-w-0">
-          <span className="truncate">📍 {CONTACT.name}</span>
-          <span className="hidden sm:inline">📞 Hotline: {CONTACT.hotline}</span>
+          <span className="flex items-center gap-1.5 truncate"><MapPin size={14} className="shrink-0" />{CONTACT.name}</span>
+          <span className="hidden sm:flex items-center gap-1.5"><Phone size={14} />Hotline: {CONTACT.hotline}</span>
         </div>
         <div className="flex items-center gap-4 shrink-0">
           {isAuthenticated && user ? (
@@ -86,9 +89,8 @@ function NavBar() {
   return (
     <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-        <a href="#top" className="flex items-center gap-2 shrink-0">
-          <span className="w-9 h-9 rounded-lg bg-primary text-white font-bold grid place-items-center">S</span>
-          <span className="text-xl font-bold text-primary">SportHub</span>
+        <a href="#top" className="shrink-0">
+          <Brand />
         </a>
 
         <nav className="hidden lg:flex items-center gap-1">
@@ -113,7 +115,7 @@ function NavBar() {
             onClick={() => setOpen((v) => !v)}
             aria-label="Mở menu"
           >
-            ☰
+            {open ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </div>
@@ -171,8 +173,8 @@ function QuickSearch() {
         <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Ngày chơi</span>
         <input type="date" value={date} min={TODAY} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
       </label>
-      <button type="submit" className="w-full py-3.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 hover:from-red-800 hover:to-red-700 text-white font-semibold shadow-lg">
-        🔍 Tìm sân ngay
+      <button type="submit" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 hover:from-red-800 hover:to-red-700 text-white font-semibold shadow-lg">
+        <Search size={18} /> Tìm sân ngay
       </button>
     </form>
   );
@@ -184,7 +186,7 @@ function Hero() {
       <div className="absolute -right-32 -top-32 w-[32rem] h-[32rem] rounded-full bg-red-700/20 blur-3xl" />
       <div className="relative max-w-6xl mx-auto px-4 pt-16 pb-28 grid gap-12 lg:grid-cols-[1.2fr_1fr] items-center">
         <div>
-          <p className="text-sm font-semibold tracking-wider text-red-200 uppercase mb-4">● 4 môn thể thao · chuỗi cụm sân đa cơ sở</p>
+          <p className="flex items-center gap-2 text-sm font-semibold tracking-wider text-red-200 uppercase mb-4"><span className="h-2 w-2 rounded-full bg-red-300 animate-pulse" />4 môn thể thao · chuỗi cụm sân đa cơ sở</p>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
             Đặt sân thể thao<br />trong 30 giây
           </h1>
@@ -193,8 +195,8 @@ function Hero() {
             theo thời gian thực, giữ chỗ và thanh toán ngay — không cần gọi điện.
           </p>
           <div className="flex flex-wrap gap-4 mb-12">
-            <button type="button" onClick={() => notifyComingSoon('schedule')} className="px-7 py-3.5 rounded-xl bg-red-700 hover:bg-red-800 font-semibold shadow-lg">
-              🔍 Tìm sân trống
+            <button type="button" onClick={() => notifyComingSoon('schedule')} className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-red-700 hover:bg-red-800 font-semibold shadow-lg">
+              <Search size={18} /> Tìm sân trống
             </button>
             <button type="button" onClick={() => notifyComingSoon('facilities')} className="px-7 py-3.5 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 font-semibold">
               Xem tất cả sân
@@ -235,12 +237,12 @@ export default function HomePage() {
           <p className="text-muted mb-6">Mọi thứ bạn cần để chơi thể thao, trong một ứng dụng.</p>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {SERVICES.map((s) => (
-              <div key={s.title} className="bg-surface border border-border rounded-2xl p-6 flex flex-col">
-                <span className={`block w-10 h-1.5 rounded-full mb-4 ${s.accent}`} />
+              <div key={s.title} className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 flex flex-col transition hover:-translate-y-0.5 hover:shadow-md">
+                <span className={`grid h-12 w-12 place-items-center rounded-xl mb-4 ${s.tint}`}><s.icon size={22} /></span>
                 <h3 className="font-semibold mb-2">{s.title}</h3>
                 <p className="text-sm text-muted flex-1">{s.description}</p>
-                <button type="button" onClick={() => notifyComingSoon(s.feature)} className="mt-4 text-sm font-semibold text-primary text-left">
-                  Xem chi tiết →
+                <button type="button" onClick={() => notifyComingSoon(s.feature)} className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary text-left hover:gap-2 transition-all">
+                  Xem chi tiết <ArrowRight size={16} />
                 </button>
               </div>
             ))}
@@ -251,7 +253,7 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold mb-6">Đặt sân chỉ với 3 bước</h2>
           <ol className="grid gap-5 md:grid-cols-3">
             {STEPS.map((step, i) => (
-              <li key={step.title} className="bg-surface border border-border rounded-2xl p-6">
+              <li key={step.title} className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6">
                 <span className="w-10 h-10 rounded-full bg-primary text-white font-bold grid place-items-center mb-4">{i + 1}</span>
                 <h3 className="font-semibold mb-2">{step.title}</h3>
                 <p className="text-sm text-muted">{step.description}</p>
@@ -266,14 +268,14 @@ export default function HomePage() {
       <footer id="lien-he" className="bg-[#2a0707] text-red-50/85 scroll-mt-24">
         <div className="max-w-6xl mx-auto px-4 py-12 grid gap-8 md:grid-cols-3">
           <div>
-            <p className="text-xl font-bold text-white mb-2">SportHub</p>
+            <div className="mb-3"><Brand light /></div>
             <p className="text-sm">Hệ thống quản lý và đặt sân cho chuỗi cụm sân thể thao đa cơ sở.</p>
           </div>
           <div className="text-sm space-y-1">
             <p className="font-semibold text-white mb-2">Liên hệ</p>
-            <p>📞 Hotline: {CONTACT.hotline}</p>
-            <p>✉️ Email: {CONTACT.email}</p>
-            <p>🕕 Mở cửa: 06:00 – 23:00 hằng ngày</p>
+            <p className="flex items-center gap-2"><Phone size={15} />Hotline: {CONTACT.hotline}</p>
+            <p className="flex items-center gap-2"><Mail size={15} />Email: {CONTACT.email}</p>
+            <p className="flex items-center gap-2"><Clock size={15} />Mở cửa: 06:00 – 23:00 hằng ngày</p>
           </div>
           <div className="text-sm space-y-1">
             <p className="font-semibold text-white mb-2">Tài khoản</p>

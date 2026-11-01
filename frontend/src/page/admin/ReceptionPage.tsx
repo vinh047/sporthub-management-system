@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import toast from 'react-hot-toast';
+import { Building, CircleCheck, Clock, ListRestart, LogIn, Search } from 'lucide-react';
 import { checkInApi } from '../../api/checkInApi';
 import type { CheckInItem } from '../../api/checkInApi';
 import { getErrorMessage } from '../../api/errors';
 import { useAuthStore } from '../../store/authStore';
 
 const hhmm = (time: string) => time.slice(0, 5);
-const TODAY_LABEL = new Date().toLocaleDateString('vi-VN');
+const TODAY_LABEL = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 
 // Backend trả giờ UTC nhưng không có chữ "Z" ở cuối
 const toLocalTime = (iso: string) =>
@@ -63,14 +64,15 @@ export default function ReceptionPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Lễ tân – khách đặt sân hôm nay</h1>
-          <p className="text-sm text-muted">{TODAY_LABEL}</p>
+          <p className="text-sm text-gray-500 capitalize">{TODAY_LABEL}</p>
+          <h2 className="text-2xl font-bold">Khách đặt sân hôm nay</h2>
         </div>
-        <label className="text-sm">
-          Cơ sở{' '}
+        <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm">
+          <Building size={16} className="text-gray-400" />
+          Cơ sở
           <input
             type="number"
             min={1}
@@ -79,57 +81,75 @@ export default function ReceptionPage() {
               setLoading(true);
               setFacilityId(Number(e.target.value) || 1);
             }}
-            className="w-20 ml-1 px-2 py-1 border border-border rounded bg-background"
+            className="w-14 rounded-md border border-gray-200 px-2 py-0.5 focus:border-red-600 focus:outline-none"
           />
         </label>
       </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2">
-        <input
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          placeholder="Nhập mã đơn hoặc số điện thoại khách"
-          className="flex-1 px-3 py-2 border border-border rounded bg-background"
-        />
-        <button className="btn btn-primary" type="submit">Tìm</button>
-        <button className="btn border border-border" type="button" onClick={reload}>Tất cả</button>
+      <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+        <div className="relative flex-1 min-w-[16rem]">
+          <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Nhập mã đơn hoặc số điện thoại khách"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3 shadow-sm focus:border-red-600 focus:outline-none focus:ring-4 focus:ring-red-600/10"
+          />
+        </div>
+        <button className="flex items-center gap-2 rounded-xl bg-red-700 px-5 py-2.5 font-semibold text-white shadow-sm hover:bg-red-800" type="submit">
+          <Search size={16} /> Tìm
+        </button>
+        <button
+          className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-medium text-gray-700 hover:border-red-200 hover:text-red-700"
+          type="button"
+          onClick={reload}
+        >
+          <ListRestart size={16} /> Tất cả
+        </button>
       </form>
 
-      <div className="overflow-x-auto border border-border rounded-lg">
+      <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-surface text-left">
+          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
             <tr>
-              <th className="px-3 py-2">Giờ</th>
-              <th className="px-3 py-2">Sân</th>
-              <th className="px-3 py-2">Mã đơn</th>
-              <th className="px-3 py-2">Khách</th>
-              <th className="px-3 py-2">SĐT</th>
-              <th className="px-3 py-2">Check-in</th>
+              <th className="px-4 py-3 font-semibold">Giờ</th>
+              <th className="px-4 py-3 font-semibold">Sân</th>
+              <th className="px-4 py-3 font-semibold">Mã đơn</th>
+              <th className="px-4 py-3 font-semibold">Khách</th>
+              <th className="px-4 py-3 font-semibold">SĐT</th>
+              <th className="px-4 py-3 font-semibold">Check-in</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={6} className="px-3 py-6 text-center text-muted">Đang tải...</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">Đang tải...</td></tr>
             )}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-6 text-center text-muted">Không có đơn nào.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">Không có đơn nào.</td></tr>
             )}
             {!loading &&
               rows.map((row) => (
-                <tr key={row.bookingDetailId} className="border-t border-border">
-                  <td className="px-3 py-2 whitespace-nowrap">{hhmm(row.startTime)}–{hhmm(row.endTime)}</td>
-                  <td className="px-3 py-2">{row.courtName}</td>
-                  <td className="px-3 py-2 font-mono">{row.bookingCode}</td>
-                  <td className="px-3 py-2">{row.customerName}</td>
-                  <td className="px-3 py-2">{row.phone ?? '—'}</td>
-                  <td className="px-3 py-2">
+                <tr key={row.bookingDetailId} className="border-t border-gray-100 hover:bg-gray-50/60">
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 font-semibold text-red-700">
+                      <Clock size={14} /> {hhmm(row.startTime)}–{hhmm(row.endTime)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 font-medium">{row.courtName}</td>
+                  <td className="px-4 py-3 font-mono text-gray-600">{row.bookingCode}</td>
+                  <td className="px-4 py-3">{row.customerName}</td>
+                  <td className="px-4 py-3 text-gray-600">{row.phone ?? '—'}</td>
+                  <td className="px-4 py-3">
                     {row.checkedIn ? (
-                      <span className="text-emerald-600 font-medium">
-                        Đã vào lúc {row.checkedInAt ? toLocalTime(row.checkedInAt) : ''}
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                        <CircleCheck size={14} /> Đã vào lúc {row.checkedInAt ? toLocalTime(row.checkedInAt) : ''}
                       </span>
                     ) : (
-                      <button className="btn btn-primary text-xs" onClick={() => handleCheckIn(row)}>
-                        Check-in
+                      <button
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-800"
+                        onClick={() => handleCheckIn(row)}
+                      >
+                        <LogIn size={14} /> Check-in
                       </button>
                     )}
                   </td>

@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 :root {
-  /* Colors - Modern Dark/Light Mode Ready */
+  /* Màu nền: mọi trang dùng nền trắng (không đổi theo chế độ tối của máy) */
+  color-scheme: light;
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   --text-primary: #0f172a;
@@ -33,16 +34,6 @@
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --border-light: #334155;
-  }
 }
 
 * {
@@ -76,13 +67,6 @@ a:hover {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-@media (prefers-color-scheme: dark) {
-  .glass {
-    background: rgba(30, 41, 59, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-  }
 }
 
 /* Premium Button styling */
