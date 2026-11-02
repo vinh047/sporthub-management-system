@@ -6,4 +6,6 @@ public interface IUserRepository : IRepository<User>
 {
     Task<User?> GetByPhoneNumberAsync(string phoneNumber);
     Task<User?> GetWithProfileAsync(int userId);
+    Task<User?> GetForLoginAsync(string phoneNumber);
+    Task<Role?> GetRoleByCodeAsync(string roleCode);
 }

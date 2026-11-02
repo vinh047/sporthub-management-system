@@ -8,6 +8,7 @@ public interface IUnitOfWork : IDisposable
     ICourtRepository Courts { get; }
     ISocialSessionRepository SocialSessions { get; }
     ITournamentRepository Tournaments { get; }
+    ICheckInRepository CheckIns { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

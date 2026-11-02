@@ -18,10 +18,12 @@ axiosInstance.interceptors.request.use((config) => {
 });
 
 // Response interceptor — xử lý 401 (token hết hạn)
+// Bỏ qua API đăng nhập/đăng ký: 401 ở đó là sai mật khẩu, để trang tự hiện lỗi
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthRequest = /\/auth\/(login|register)$/.test(error.config?.url ?? '');
+    if (error.response?.status === 401 && !isAuthRequest) {
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }

@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { homePathFor } from './roleHome';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,8 +19,9 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Sai vai trò thì đưa về trang chính của vai trò đó
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
+    return <Navigate to={homePathFor(user.role)} replace />;
   }
 
   return <>{children}</>;

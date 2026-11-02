@@ -29,9 +29,11 @@ public static class DependencyInjection
         services.AddScoped<ICourtRepository, CourtRepository>();
         services.AddScoped<ISocialSessionRepository, SocialSessionRepository>();
         services.AddScoped<ITournamentRepository, TournamentRepository>();
+        services.AddScoped<ICheckInRepository, CheckInRepository>();
 
-        // JWT
+        // JWT & mật khẩu
         services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
+        services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 
         // Background Jobs
         services.AddHostedService<HoldSlotExpiryJob>();

@@ -1,11 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface User {
+export type Role = 'ADMIN' | 'STAFF' | 'PLAYER';
+
+export interface User {
   userId: number;
   fullName: string;
   phoneNumber: string;
-  role: 'ADMIN' | 'STAFF' | 'PLAYER';
+  role: Role;
+  facilityId: number | null; // cơ sở được phân công (chỉ Staff)
 }
 
 interface AuthState {
