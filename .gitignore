@@ -5,7 +5,7 @@
 
 # dotenv files
 .env
-
+.docs/
 # User-specific files
 *.rsuser
 *.suo
@@ -42,7 +42,7 @@ bld/
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
-
+docs/
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
