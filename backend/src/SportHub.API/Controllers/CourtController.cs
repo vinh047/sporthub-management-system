@@ -30,7 +30,7 @@ public class CourtController(ICourtService courtService) : ApiControllerBase
     [Authorize(Roles = "ADMIN,STAFF")]
     public async Task<ActionResult<BaseResponse>> LockForMaintenance([FromBody] LockCourtRequest request)
     {
-        await courtService.LockCourtForMaintenanceAsync(request);
+        await courtService.LockCourtForMaintenanceAsync(request, RequiredUserId);
         return Ok(BaseResponse.Ok("Sân đã được khóa bảo trì."));
     }
 }

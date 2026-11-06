@@ -7,5 +7,5 @@ public interface ICourtService
     Task<CourtResponse> CreateCourtAsync(CreateCourtRequest request);
     Task<IEnumerable<CourtAvailabilityResponse>> GetAvailableCourtSlotsAsync(
         int facilityId, int sportId, DateOnly date);
-    Task LockCourtForMaintenanceAsync(LockCourtRequest request);
+    Task LockCourtForMaintenanceAsync(LockCourtRequest request, int createdByUserId);
 }

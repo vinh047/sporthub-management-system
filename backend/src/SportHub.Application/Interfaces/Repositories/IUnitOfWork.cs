@@ -4,6 +4,8 @@ namespace SportHub.Application.Interfaces.Repositories;
 public interface IUnitOfWork : IDisposable
 {
     IUserRepository Users { get; }
+    IFacilityRepository Facilities { get; }
+    IPromotionRepository Promotions { get; }
     IBookingRepository Bookings { get; }
     ICourtRepository Courts { get; }
     ISocialSessionRepository SocialSessions { get; }
