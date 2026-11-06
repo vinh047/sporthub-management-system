@@ -6,4 +6,5 @@ public interface ICourtRepository : IRepository<Court>
 {
     Task<IEnumerable<Court>> GetAvailableCourtsAsync(
         int facilityId, int sportId, DateOnly date);
+    Task<Court?> GetWithRelationsAsync(int id);
 }

@@ -25,6 +25,8 @@ public static class DependencyInjection
         // Unit of Work & Repositories
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IFacilityRepository, FacilityRepository>();
+        services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<ICourtRepository, CourtRepository>();
         services.AddScoped<ISocialSessionRepository, SocialSessionRepository>();

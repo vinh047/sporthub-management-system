@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Domain.Entities.Booking;
 using SportHub.Domain.Enums;
+using SportHub.Domain.Exceptions;
 
 namespace SportHub.Infrastructure.Persistence.Repositories;
 
@@ -22,6 +23,12 @@ public class BookingRepository(SportHubDbContext context)
 
     public async Task<bool> IsSlotAvailableAsync(int courtId, DateOnly playDate, int timeSlotId)
     {
+        var timeSlot = await _context.TimeSlots
+            .Where(s => s.Id == timeSlotId)
+            .Select(s => new { s.StartTime, s.EndTime })
+            .FirstOrDefaultAsync()
+            ?? throw new NotFoundException("Khung giờ", timeSlotId);
+
         // Slot bị chiếm nếu có Booking ở trạng thái Held hoặc Confirmed
         var occupied = await _context.BookingDetails.AnyAsync(d =>
             d.CourtId == courtId &&
@@ -30,10 +37,12 @@ public class BookingRepository(SportHubDbContext context)
             (d.Booking.BookingStatus == BookingStatus.Held ||
              d.Booking.BookingStatus == BookingStatus.Confirmed));
 
-        // Slot bị khóa nếu có bảo trì
+        // Maintenance blocks only slots whose time range overlaps the maintenance window.
         var maintenance = await _context.CourtMaintenances.AnyAsync(m =>
             m.CourtId == courtId &&
-            m.MaintenanceDate == playDate);
+            m.MaintenanceDate == playDate &&
+            m.StartTime < timeSlot.EndTime &&
+            timeSlot.StartTime < m.EndTime);
 
         return !occupied && !maintenance;
     }
