@@ -14,7 +14,7 @@ const MENU: { to: string; label: string; icon: LucideIcon; feature?: FeatureKey 
   { to: '/player/my-bookings', label: 'Đơn của tôi', icon: ReceiptText, feature: 'myBookings' },
   { to: '/player/social', label: 'Social', icon: Users, feature: 'social' },
   { to: '/player/tournaments', label: 'Giải đấu', icon: Trophy, feature: 'tournaments' },
-  { to: '/player/vouchers', label: 'Ưu đãi', icon: TicketPercent, feature: 'vouchers' },
+  { to: '/player/vouchers', label: 'Ưu đãi', icon: TicketPercent },
   { to: '/player/profile', label: 'Hồ sơ', icon: UserRound, feature: 'profile' },
 ];
 

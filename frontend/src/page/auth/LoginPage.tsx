@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { LoaderCircle, Lock, LogIn, Phone } from 'lucide-react';
 import { authApi } from '../../api/authApi';
@@ -15,10 +15,12 @@ import { saveSession } from '../../utils/session';
 const DEMO_ACCOUNTS = [
   { role: 'Quản trị', phone: '0900000000', password: 'Admin@123' },
   { role: 'Nhân viên', phone: '0900000001', password: 'Staff@123' },
+  { role: 'Người chơi', phone: '0900000002', password: 'Player@123' },
 ];
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, user } = useAuthStore();
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +36,16 @@ export default function LoginPage() {
       const res = await authApi.login({ phoneNumber: phoneNumber.trim(), password });
       if (!res.data) throw new Error('Không nhận được dữ liệu đăng nhập.');
       toast.success(`Xin chào ${res.data.fullName}!`);
-      navigate(saveSession(res.data), { replace: true });
+      const homePath = saveSession(res.data);
+      const returnPath = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
+      const canReturnToPromotions = res.data.role === 'PLAYER' &&
+        (returnPath?.pathname === '/vouchers' || returnPath?.pathname?.startsWith('/player/'));
+      navigate(
+        canReturnToPromotions && returnPath?.pathname
+          ? `${returnPath.pathname}${returnPath.search ?? ''}${returnPath.hash ?? ''}`
+          : homePath,
+        { replace: true },
+      );
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {

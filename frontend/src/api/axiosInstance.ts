@@ -25,7 +25,9 @@ axiosInstance.interceptors.response.use(
     const isAuthRequest = /\/auth\/(login|register)$/.test(error.config?.url ?? '');
     if (error.response?.status === 401 && !isAuthRequest) {
       useAuthStore.getState().logout();
-      window.location.href = '/login';
+      if (window.location.pathname !== '/vouchers') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

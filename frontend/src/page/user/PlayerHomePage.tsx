@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -23,12 +24,12 @@ const TIERS = [
 
 const TODAY_LABEL = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
 
-const ACTIONS: { title: string; description: string; icon: LucideIcon; feature: FeatureKey; tint: string }[] = [
+const ACTIONS: { title: string; description: string; icon: LucideIcon; feature?: FeatureKey; to?: string; tint: string }[] = [
   { title: 'Đặt sân', description: 'Xem lịch trống, giữ chỗ 10 phút, thanh toán VietQR.', icon: CalendarDays, feature: 'booking', tint: 'bg-red-50 text-red-700' },
   { title: 'Buổi chơi Social', description: 'Mua vé buổi giao lưu hợp trình độ.', icon: Users, feature: 'social', tint: 'bg-amber-50 text-amber-600' },
   { title: 'Giải đấu', description: 'Đăng ký đội, theo dõi nhánh đấu trực tiếp.', icon: Trophy, feature: 'tournaments', tint: 'bg-emerald-50 text-emerald-600' },
   { title: 'Đơn của tôi', description: 'Xem lại đơn đã đặt, hủy và hoàn tiền.', icon: ReceiptText, feature: 'myBookings', tint: 'bg-blue-50 text-blue-600' },
-  { title: 'Ví voucher', description: 'Voucher còn dùng được, lịch sử tích điểm.', icon: TicketPercent, feature: 'vouchers', tint: 'bg-purple-50 text-purple-600' },
+  { title: 'Ví voucher', description: 'Voucher còn dùng được và ưu đãi đang mở.', icon: TicketPercent, to: '/player/vouchers', tint: 'bg-purple-50 text-purple-600' },
   { title: 'Hồ sơ thể thao', description: 'Lịch sử uy tín và biến động trình độ.', icon: UserRound, feature: 'sportProfile', tint: 'bg-slate-100 text-slate-700' },
 ];
 
@@ -123,13 +124,8 @@ export default function PlayerHomePage() {
         <section className="lg:col-span-2">
           <h2 className="mb-4 text-lg font-bold">Bắt đầu</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            {ACTIONS.map(({ title, description, icon: Icon, feature, tint }) => (
-              <button
-                key={title}
-                type="button"
-                onClick={() => notifyComingSoon(feature)}
-                className={`${card} group flex items-start gap-4 p-5 text-left transition hover:-translate-y-0.5 hover:border-red-100 hover:shadow-md`}
-              >
+            {ACTIONS.map(({ title, description, icon: Icon, feature, to, tint }) => {
+              const content = <>
                 <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${tint}`}><Icon size={22} /></span>
                 <span className="flex-1">
                   <span className="flex items-center justify-between font-semibold">
@@ -137,10 +133,14 @@ export default function PlayerHomePage() {
                     <ArrowRight size={16} className="text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-red-600" />
                   </span>
                   <span className="mt-1 block text-sm text-gray-500">{description}</span>
-                  <span className="mt-2 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">Sắp có · {ownerOf(feature)}</span>
+                  {feature && <span className="mt-2 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">Sắp có · {ownerOf(feature)}</span>}
                 </span>
-              </button>
-            ))}
+              </>;
+              const className = `${card} group flex items-start gap-4 p-5 text-left transition hover:-translate-y-0.5 hover:border-red-100 hover:shadow-md`;
+              return feature
+                ? <button key={title} type="button" onClick={() => notifyComingSoon(feature)} className={className}>{content}</button>
+                : to && <Link key={title} to={to} className={className}>{content}</Link>;
+            })}
           </div>
         </section>
 
