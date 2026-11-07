@@ -24,21 +24,48 @@ public class PricingService(IUnitOfWork uow) : IPricingService
 
     public async Task UpsertPricePolicyAsync(UpsertPricePolicyRequest request)
     {
-        if (request.BasePrice < 0 || request.WeekendSurchargePercent < 0)
-            throw new ValidationException(["Giá và phụ thu không được âm."]);
+        if (request.BasePrice < 0 || request.WeekendSurchargePercent < 0 ||
+            request.WeekendSurchargePercent > 1000)
+            throw new ValidationException(["Giá không được âm và phụ thu cuối tuần không được vượt quá 1000%."]);
+        if (request.Rules is null || request.Rules.Any(r => r.HourlyRate < 0) ||
+            request.Rules.Select(r => r.TimeSlotId).Distinct().Count() != request.Rules.Count)
+            throw new ValidationException(["Danh sách giá theo khung giờ không hợp lệ hoặc có khung giờ trùng."]);
         _ = await uow.Facilities.GetByIdAsync(request.FacilityId)
             ?? throw new NotFoundException("Cơ sở", request.FacilityId);
-        var policy = new PricePolicy
+        _ = await uow.Facilities.GetSportByIdAsync(request.SportId)
+            ?? throw new NotFoundException("Môn thể thao", request.SportId);
+        var slots = await uow.Facilities.GetTimeSlotsAsync();
+        var slotIds = slots.Select(s => s.Id).ToHashSet();
+        if (request.Rules.Any(rule => !slotIds.Contains(rule.TimeSlotId)))
+            throw new ValidationException(["Danh sách chứa khung giờ không tồn tại."]);
+
+        var policy = await uow.Facilities.GetPricePolicyByEffectiveDateAsync(
+            request.FacilityId, request.SportId, request.EffectiveFrom);
+        if (policy is null)
         {
-            FacilityId = request.FacilityId, SportId = request.SportId,
-            BasePrice = request.BasePrice, WeekendSurchargePercent = request.WeekendSurchargePercent,
-            EffectiveFrom = request.EffectiveFrom,
-            PriceRuleDetails = request.Rules.Select(r => new PriceRuleDetail
+            policy = new PricePolicy
             {
-                TimeSlotId = r.TimeSlotId, HourlyRate = r.HourlyRate, IsPeakHour = r.IsPeakHour
-            }).ToList()
-        };
-        await uow.Facilities.AddPricePolicyAsync(policy);
+                FacilityId = request.FacilityId,
+                SportId = request.SportId,
+                EffectiveFrom = request.EffectiveFrom
+            };
+            await uow.Facilities.AddPricePolicyAsync(policy);
+        }
+        else
+        {
+            policy.PriceRuleDetails.Clear();
+        }
+
+        policy.BasePrice = request.BasePrice;
+        policy.WeekendSurchargePercent = request.WeekendSurchargePercent;
+        policy.IsActive = true;
+        foreach (var rule in request.Rules)
+            policy.PriceRuleDetails.Add(new PriceRuleDetail
+            {
+                TimeSlotId = rule.TimeSlotId,
+                HourlyRate = rule.HourlyRate,
+                IsPeakHour = rule.IsPeakHour
+            });
         await uow.SaveChangesAsync();
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Data;
 using SportHub.Application.Interfaces.Repositories;
 
 namespace SportHub.Infrastructure.Persistence.Repositories;
@@ -19,8 +20,9 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
         => await context.SaveChangesAsync(ct);
 
-    public async Task BeginTransactionAsync()
-        => _transaction = await context.Database.BeginTransactionAsync();
+    public async Task BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
+        => _transaction = await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions
+            .BeginTransactionAsync(context.Database, isolationLevel, CancellationToken.None);
 
     public async Task CommitTransactionAsync()
     {

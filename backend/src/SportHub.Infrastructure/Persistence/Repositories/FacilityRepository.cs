@@ -7,23 +7,42 @@ namespace SportHub.Infrastructure.Persistence.Repositories;
 public class FacilityRepository(SportHubDbContext context)
     : Repository<Facility>(context), IFacilityRepository
 {
-    public Task<IEnumerable<Facility>> GetFacilitiesAsync(bool activeOnly)
+    public async Task<IEnumerable<Facility>> GetFacilitiesAsync(bool activeOnly)
     {
         IQueryable<Facility> query = _dbSet.Include(f => f.Courts).ThenInclude(c => c.Sport);
         if (activeOnly)
             query = query.Where(f => f.IsActive);
 
-        return query.OrderBy(f => f.Name).ToListAsync()
-            .ContinueWith(task => (IEnumerable<Facility>)task.Result);
+        return await query.OrderBy(f => f.Name).ToListAsync();
     }
 
     public Task<Facility?> GetWithCourtsAsync(int id)
         => _dbSet.Include(f => f.Courts).ThenInclude(c => c.Sport)
             .FirstOrDefaultAsync(f => f.Id == id);
 
-    public Task<IEnumerable<TimeSlot>> GetTimeSlotsAsync()
-        => _context.TimeSlots.OrderBy(s => s.SlotIndex).ToListAsync()
-            .ContinueWith(task => (IEnumerable<TimeSlot>)task.Result);
+    public async Task<IEnumerable<TimeSlot>> GetTimeSlotsAsync()
+        => await _context.TimeSlots.OrderBy(s => s.SlotIndex).ToListAsync();
+
+    public async Task<IEnumerable<Sport>> GetActiveSportsAsync()
+        => await _context.Sports.Where(s => s.IsActive)
+            .OrderBy(s => s.SportName).ToListAsync();
+
+    public async Task<IEnumerable<Sport>> GetSportsAsync(bool activeOnly)
+    {
+        IQueryable<Sport> query = _context.Sports;
+        if (activeOnly)
+            query = query.Where(s => s.IsActive);
+        return await query.OrderBy(s => s.SportName).ToListAsync();
+    }
+
+    public Task<Sport?> GetSportByIdAsync(int id)
+        => _context.Sports.FirstOrDefaultAsync(s => s.Id == id && s.IsActive);
+
+    public Task<Sport?> GetSportEntityByIdAsync(int id)
+        => _context.Sports.FirstOrDefaultAsync(s => s.Id == id);
+
+    public Task AddSportAsync(Sport sport)
+        => _context.Sports.AddAsync(sport).AsTask();
 
     public Task<PricePolicy?> GetPricePolicyAsync(int facilityId, int sportId, DateOnly playDate)
         => _context.PricePolicies
@@ -32,6 +51,12 @@ public class FacilityRepository(SportHubDbContext context)
                         p.IsActive && p.EffectiveFrom <= playDate)
             .OrderByDescending(p => p.EffectiveFrom)
             .FirstOrDefaultAsync();
+
+    public Task<PricePolicy?> GetPricePolicyByEffectiveDateAsync(
+        int facilityId, int sportId, DateOnly effectiveFrom)
+        => _context.PricePolicies.Include(p => p.PriceRuleDetails)
+            .FirstOrDefaultAsync(p => p.FacilityId == facilityId &&
+                p.SportId == sportId && p.EffectiveFrom == effectiveFrom);
 
     public Task<bool> HasMaintenanceOverlapAsync(
         int courtId, DateOnly date, TimeOnly start, TimeOnly end)

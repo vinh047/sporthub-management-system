@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Auth;
+using SportHub.Domain.Entities.Facility;
 using SportHub.Domain.Entities.Player;
 
 namespace SportHub.Infrastructure.Persistence.Seed;
@@ -16,6 +17,8 @@ public static class DataSeeder
     public const string AdminPassword = "Admin@123";
     public const string StaffPhone = "0900000001";
     public const string StaffPassword = "Staff@123";
+    public const string PlayerPhone = "0900000002";
+    public const string PlayerPassword = "Player@123";
 
     public static async Task SeedDevelopmentDataAsync(this IServiceProvider services)
     {
@@ -38,6 +41,19 @@ public static class DataSeeder
         await db.SaveChangesAsync();
 
         var roles = await db.Roles.ToDictionaryAsync(r => r.RoleCode);
+        var sportSeeds = new[]
+        {
+            ("BADMINTON", "Cầu lông"),
+            ("PICKLEBALL", "Pickleball"),
+            ("FOOTBALL5", "Bóng đá 5 người"),
+        };
+        foreach (var (code, name) in sportSeeds)
+        {
+            if (!await db.Sports.AnyAsync(s => s.SportCode == code))
+                db.Sports.Add(new Sport { SportCode = code, SportName = name });
+        }
+        await db.SaveChangesAsync();
+
         var firstFacilityId = await db.Facilities.OrderBy(f => f.Id).Select(f => (int?)f.Id).FirstOrDefaultAsync();
 
         // 2. Tài khoản Admin mẫu
@@ -70,7 +86,20 @@ public static class DataSeeder
             staff.StaffProfile.ManagedFacilityId = firstFacilityId;
         }
 
-        // 4. Tài khoản tạo trước đây chưa có vai trò hoặc hồ sơ thì bổ sung thành người chơi
+        // 4. Tài khoản Player mẫu để kiểm thử luồng người chơi
+        if (!await db.Users.AnyAsync(u => u.PhoneNumber == PlayerPhone))
+        {
+            db.Users.Add(new User
+            {
+                FullName = "Người chơi mẫu",
+                PhoneNumber = PlayerPhone,
+                PasswordHash = hasher.Hash(PlayerPassword),
+                UserRole = new UserRole { Role = roles["PLAYER"] },
+                PlayerProfile = new PlayerProfile()
+            });
+        }
+
+        // 5. Tài khoản tạo trước đây chưa có vai trò hoặc hồ sơ thì bổ sung thành người chơi
         var usersWithoutRole = await db.Users.Where(u => u.UserRole == null).ToListAsync();
         foreach (var user in usersWithoutRole)
             user.UserRole = new UserRole { Role = roles["PLAYER"] };

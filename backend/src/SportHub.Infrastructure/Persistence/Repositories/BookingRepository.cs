@@ -21,6 +21,10 @@ public class BookingRepository(SportHubDbContext context)
             .OrderByDescending(b => b.CreatedAt)
             .ToListAsync();
 
+    public Task<Booking?> GetForVoucherAsync(int bookingId)
+        => _dbSet.Include(b => b.Details).ThenInclude(d => d.TimeSlot)
+            .FirstOrDefaultAsync(b => b.Id == bookingId);
+
     public async Task<bool> IsSlotAvailableAsync(int courtId, DateOnly playDate, int timeSlotId)
     {
         var timeSlot = await _context.TimeSlots

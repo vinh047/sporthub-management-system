@@ -17,4 +17,10 @@ public class CourtRepository(SportHubDbContext context)
     public Task<Court?> GetWithRelationsAsync(int id)
         => _dbSet.Include(c => c.Sport).Include(c => c.Facility)
             .FirstOrDefaultAsync(c => c.Id == id);
+
+    public Task<bool> CourtNamesExistAsync(int facilityId, IEnumerable<string> courtNames)
+    {
+        var names = courtNames.ToArray();
+        return _dbSet.AnyAsync(c => c.FacilityId == facilityId && names.Contains(c.CourtName));
+    }
 }
