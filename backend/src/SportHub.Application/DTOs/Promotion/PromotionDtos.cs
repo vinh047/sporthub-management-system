@@ -21,6 +21,8 @@ public record PromotionResponse(
     decimal DiscountValue,
     decimal? MaxDiscountAmount,
     decimal MinOrderAmount,
+    int? UsageLimitTotal,
+    int UsageLimitPerUser,
     DateTime StartDate,
     DateTime EndDate,
     bool IsOffPeakOnly,

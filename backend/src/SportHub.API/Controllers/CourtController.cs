@@ -26,6 +26,15 @@ public class CourtController(ICourtService courtService) : ApiControllerBase
         return StatusCode(201, BaseResponse<CourtResponse>.Ok(result));
     }
 
+    [HttpPost("batch")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult<BaseResponse<IEnumerable<CourtResponse>>>> CreateBatch(
+        [FromBody] CreateCourtsRequest request)
+    {
+        var result = await courtService.CreateCourtsAsync(request);
+        return StatusCode(201, BaseResponse<IEnumerable<CourtResponse>>.Ok(result));
+    }
+
     [HttpPost("maintenance")]
     [Authorize(Roles = "ADMIN,STAFF")]
     public async Task<ActionResult<BaseResponse>> LockForMaintenance([FromBody] LockCourtRequest request)

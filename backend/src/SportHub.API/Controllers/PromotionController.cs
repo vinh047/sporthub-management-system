@@ -27,4 +27,23 @@ public class PromotionController(IPromotionService promotionService) : ApiContro
         [FromBody] ValidatePromotionRequest request)
         => Ok(BaseResponse<PromotionDiscountResponse>.Ok(
             await promotionService.ValidateAsync(request, RequiredUserId)));
+
+    [HttpGet("wallet")]
+    [Authorize(Roles = "PLAYER")]
+    public async Task<ActionResult<BaseResponse<IEnumerable<UserVoucherResponse>>>> GetWallet()
+        => Ok(BaseResponse<IEnumerable<UserVoucherResponse>>.Ok(
+            await promotionService.GetWalletAsync(RequiredUserId)));
+
+    [HttpPost("{id:int}/claim")]
+    [Authorize(Roles = "PLAYER")]
+    public async Task<ActionResult<BaseResponse<UserVoucherResponse>>> Claim(int id)
+        => StatusCode(201, BaseResponse<UserVoucherResponse>.Ok(
+            await promotionService.ClaimAsync(id, RequiredUserId)));
+
+    [HttpPost("redeem")]
+    [Authorize(Roles = "PLAYER")]
+    public async Task<ActionResult<BaseResponse<PromotionDiscountResponse>>> Redeem(
+        [FromBody] RedeemVoucherRequest request)
+        => Ok(BaseResponse<PromotionDiscountResponse>.Ok(
+            await promotionService.RedeemAsync(request, RequiredUserId)));
 }

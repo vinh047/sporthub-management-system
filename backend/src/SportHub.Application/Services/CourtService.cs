@@ -11,21 +11,46 @@ public class CourtService(IUnitOfWork uow) : ICourtService
 {
     public async Task<CourtResponse> CreateCourtAsync(CreateCourtRequest request)
     {
+        var created = await CreateCourtsAsync(new CreateCourtsRequest(
+            request.FacilityId, request.SportId, request.CourtName.Trim(), 1, request.CourtType));
+        return created.Single();
+    }
+
+    public async Task<IEnumerable<CourtResponse>> CreateCourtsAsync(CreateCourtsRequest request)
+    {
+        if (request.Count is < 1 or > 100)
+            throw new ValidationException(["Số lượng sân phải từ 1 đến 100."]);
+        if (string.IsNullOrWhiteSpace(request.NamePrefix))
+            throw new ValidationException(["Tên tiền tố của sân không được để trống."]);
         var facility = await uow.Facilities.GetByIdAsync(request.FacilityId)
             ?? throw new NotFoundException("Cơ sở", request.FacilityId);
+        if (!facility.IsActive)
+            throw new ValidationException(["Không thể thêm sân vào cơ sở đã ngừng hoạt động."]);
+        var sport = await uow.Facilities.GetSportByIdAsync(request.SportId)
+            ?? throw new NotFoundException("Môn thể thao", request.SportId);
         if (!Enum.TryParse<CourtType>(request.CourtType, true, out var courtType))
             throw new ValidationException(["Loại sân chỉ được là Indoor hoặc Outdoor."]);
-        var court = new Court
+
+        var prefix = request.NamePrefix.Trim();
+        string[] names = request.Count == 1
+            ? [prefix]
+            : Enumerable.Range(1, request.Count).Select(index => $"{prefix} {index:00}").ToArray();
+        if (await uow.Courts.CourtNamesExistAsync(facility.Id, names))
+            throw new ConflictException("Một hoặc nhiều tên sân đã tồn tại tại cơ sở này.");
+
+        var courts = names.Select(name => new Court
         {
-            FacilityId = facility.Id, SportId = request.SportId,
-            CourtName = request.CourtName.Trim(), CourtType = courtType
-        };
-        await uow.Courts.AddAsync(court);
+            FacilityId = facility.Id,
+            SportId = sport.Id,
+            CourtName = name,
+            CourtType = courtType
+        }).ToList();
+        foreach (var court in courts)
+            await uow.Courts.AddAsync(court);
         await uow.SaveChangesAsync();
-        var hydrated = await uow.Courts.GetWithRelationsAsync(court.Id) ?? court;
-        return new(hydrated.Id, hydrated.FacilityId, hydrated.SportId,
-            hydrated.Sport?.SportName ?? string.Empty, hydrated.CourtName,
-            hydrated.CourtType.ToString(), hydrated.IsActive);
+        return courts.Select(c => new CourtResponse(
+            c.Id, c.FacilityId, c.SportId, sport.SportName,
+            c.CourtName, c.CourtType.ToString(), c.IsActive));
     }
 
     public async Task<IEnumerable<CourtAvailabilityResponse>> GetAvailableCourtSlotsAsync(
@@ -33,11 +58,11 @@ public class CourtService(IUnitOfWork uow) : ICourtService
     {
         var courts = await uow.Courts.GetAvailableCourtsAsync(facilityId, sportId, date);
         var slots = await uow.Facilities.GetTimeSlotsAsync();
+        var policy = await uow.Facilities.GetPricePolicyAsync(facilityId, sportId, date);
+        var rules = policy?.PriceRuleDetails.ToDictionary(r => r.TimeSlotId);
         var result = new List<CourtAvailabilityResponse>();
         foreach (var court in courts)
         {
-            var policy = await uow.Facilities.GetPricePolicyAsync(facilityId, sportId, date);
-            var rules = policy?.PriceRuleDetails.ToDictionary(r => r.TimeSlotId);
             var values = new List<SlotAvailability>();
             foreach (var slot in slots)
             {

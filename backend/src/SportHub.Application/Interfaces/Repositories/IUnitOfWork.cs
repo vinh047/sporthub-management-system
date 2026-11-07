@@ -1,3 +1,5 @@
+using System.Data;
+
 namespace SportHub.Application.Interfaces.Repositories;
 
 /// <summary>Unit of Work — commit tất cả thay đổi trong 1 transaction</summary>
@@ -12,7 +14,7 @@ public interface IUnitOfWork : IDisposable
     ITournamentRepository Tournaments { get; }
     ICheckInRepository CheckIns { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
-    Task BeginTransactionAsync();
+    Task BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted);
     Task CommitTransactionAsync();
     Task RollbackTransactionAsync();
 }
