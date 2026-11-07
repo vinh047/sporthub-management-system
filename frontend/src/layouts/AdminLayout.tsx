@@ -29,7 +29,7 @@ const MENUS: Record<Area, MenuGroup[]> = {
     {
       title: 'Vận hành',
       items: [
-        { to: '/staff/maintenance', label: 'Khóa sân bảo trì', icon: Wrench, feature: 'maintenance' },
+        { to: '/staff/maintenance', label: 'Khóa sân bảo trì', icon: Wrench },
         { to: '/staff/social', label: 'Điểm danh Social', icon: ClipboardCheck, feature: 'socialCheckin' },
         { to: '/staff/tournaments', label: 'Nhập tỉ số giải đấu', icon: Swords, feature: 'tournamentManage' },
       ],
@@ -48,15 +48,15 @@ const MENUS: Record<Area, MenuGroup[]> = {
       items: [
         { to: '/admin/reception', label: 'Lễ tân / Check-in', icon: ScanLine },
         { to: '/admin/pos', label: 'Bán sân tại quầy', icon: Store },
-        { to: '/admin/maintenance', label: 'Khóa sân bảo trì', icon: Wrench, feature: 'maintenance' },
+        { to: '/admin/maintenance', label: 'Khóa sân bảo trì', icon: Wrench },
       ],
     },
     {
       title: 'Danh mục',
       items: [
-        { to: '/admin/facilities', label: 'Cơ sở & sân', icon: Building, feature: 'facilities' },
-        { to: '/admin/pricing', label: 'Bảng giá', icon: BadgeDollarSign, feature: 'pricing' },
-        { to: '/admin/promotions', label: 'Khuyến mãi', icon: Megaphone, feature: 'promotions' },
+        { to: '/admin/facilities', label: 'Cơ sở & sân', icon: Building },
+        { to: '/admin/pricing', label: 'Bảng giá', icon: BadgeDollarSign },
+        { to: '/admin/promotions', label: 'Khuyến mãi', icon: Megaphone },
       ],
     },
     {
