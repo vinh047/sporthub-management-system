@@ -2,6 +2,7 @@ import axios from 'axios';
 
 /** Lấy thông báo lỗi dễ đọc từ BaseResponse của backend */
 export function getErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
   if (axios.isAxiosError(err)) {
     if (!err.response) return 'Không kết nối được máy chủ.';
     const data = err.response.data as { message?: string; errors?: string[] } | undefined;

@@ -1,36 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, CalendarDays, Clock, Crown, Mail, MapPin, Menu, Phone, Search, Trophy, Users, X } from 'lucide-react';
-import Brand from '../../components/Brand';
+import { ArrowRight, CalendarDays, Crown, Search, Trophy, Users } from 'lucide-react';
+import { PublicSiteFooter, PublicSiteHeader } from '../../components/PublicSiteChrome';
 import SystemStatus from '../../components/SystemStatus';
-import { useAuthStore } from '../../store/authStore';
-import { homePathFor } from '../../utils/roleHome';
 import { notifyComingSoon } from '../../utils/comingSoon';
 import type { FeatureKey } from '../../utils/comingSoon';
-
-// TODO: thay bằng thông tin thật của chuỗi sân
-const CONTACT = { name: 'Hệ thống đặt sân SportHub', hotline: '0900 000 000', email: 'lienhe@sporthub.vn' };
-
-// TODO (TV3): lấy danh sách môn và cơ sở từ GET /api/sports, GET /api/facility
-const SPORTS = ['Cầu lông', 'Pickleball', 'Bóng đá mini', 'Tennis'];
-const FACILITIES = ['Tất cả cơ sở'];
+import { facilityApi } from '../../api/facilityApi';
+import type { CourtAvailability, Facility, Sport } from '../../api/facilityModels';
+import { getErrorMessage } from '../../api/errors';
+import toast from 'react-hot-toast';
 
 const TODAY = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
-const CURRENT_YEAR = new Date().getFullYear();
-
-// Mục menu: "href" = cuộn tới phần trên trang, "feature" = chức năng chưa làm (bấm hiện người phụ trách)
-const NAV: { label: string; href?: string; feature?: FeatureKey }[] = [
-  { label: 'Trang chủ', href: '#top' },
-  { label: 'Tìm sân', feature: 'facilities' },
-  { label: 'Lịch đặt sân', feature: 'schedule' },
-  { label: 'Social', feature: 'social' },
-  { label: 'Giải đấu', feature: 'tournaments' },
-  { label: 'Ưu đãi', feature: 'promotions' },
-  { label: 'Hướng dẫn', href: '#huong-dan' },
-  { label: 'Liên hệ', href: '#lien-he' },
-];
 
 const STATS = [
   { value: '4', label: 'Môn thể thao' },
@@ -39,11 +21,11 @@ const STATS = [
   { value: 'Live', label: 'Lịch sân thời gian thực' },
 ];
 
-const SERVICES: { title: string; description: string; feature: FeatureKey; icon: LucideIcon; tint: string }[] = [
+const SERVICES: { title: string; description: string; feature?: FeatureKey; to?: string; icon: LucideIcon; tint: string }[] = [
   { title: 'Đặt sân online', description: 'Xem lịch trống theo thời gian thực, giữ chỗ 10 phút và thanh toán bằng VietQR.', feature: 'booking', icon: CalendarDays, tint: 'bg-red-50 text-red-700' },
   { title: 'Buổi chơi Social', description: 'Mua vé tham gia buổi giao lưu hợp trình độ, không lo thiếu người.', feature: 'social', icon: Users, tint: 'bg-amber-50 text-amber-600' },
   { title: 'Giải đấu', description: 'Đăng ký đội, theo dõi nhánh đấu và tỉ số cập nhật trực tiếp.', feature: 'tournaments', icon: Trophy, tint: 'bg-emerald-50 text-emerald-600' },
-  { title: 'Ưu đãi thành viên', description: 'Tích điểm mỗi lần đặt sân, lên hạng Bạc, Vàng, Kim Cương để được giảm giá.', feature: 'vouchers', icon: Crown, tint: 'bg-purple-50 text-purple-600' },
+  { title: 'Ưu đãi thành viên', description: 'Xem các chương trình khuyến mãi đang mở và đăng nhập để nhận voucher.', to: '/vouchers', icon: Crown, tint: 'bg-purple-50 text-purple-600' },
 ];
 
 const STEPS = [
@@ -52,130 +34,79 @@ const STEPS = [
   { title: 'Thanh toán và nhận sân', description: 'Quét mã VietQR, đến sân đọc mã đơn hoặc số điện thoại để check-in.' },
 ];
 
-function TopBar() {
-  const { isAuthenticated, user } = useAuthStore();
-  return (
-    <div className="bg-[#2a0707] text-red-50/90 text-sm">
-      <div className="max-w-6xl mx-auto px-4 h-10 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-5 min-w-0">
-          <span className="flex items-center gap-1.5 truncate"><MapPin size={14} className="shrink-0" />{CONTACT.name}</span>
-          <span className="hidden sm:flex items-center gap-1.5"><Phone size={14} />Hotline: {CONTACT.hotline}</span>
-        </div>
-        <div className="flex items-center gap-4 shrink-0">
-          {isAuthenticated && user ? (
-            <Link to={homePathFor(user.role)} className="text-red-50 hover:text-white">Vào trang của tôi</Link>
-          ) : (
-            <>
-              <Link to="/login" className="text-red-50 hover:text-white">Đăng nhập</Link>
-              <Link to="/login" className="text-red-50 hover:text-white hidden sm:inline">Quản trị</Link>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NavBar() {
-  const [open, setOpen] = useState(false);
-
-  const handleNav = (item: (typeof NAV)[number]) => {
-    setOpen(false);
-    if (item.feature) notifyComingSoon(item.feature);
-  };
-
-  const linkClass = 'px-3 py-2 rounded-md text-[15px] text-text hover:text-primary whitespace-nowrap';
-
-  return (
-    <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-        <a href="#top" className="shrink-0">
-          <Brand />
-        </a>
-
-        <nav className="hidden lg:flex items-center gap-1">
-          {NAV.map((item) =>
-            item.href ? (
-              <a key={item.label} href={item.href} className={linkClass}>{item.label}</a>
-            ) : (
-              <button key={item.label} type="button" onClick={() => handleNav(item)} className={linkClass}>
-                {item.label}
-              </button>
-            )
-          )}
-        </nav>
-
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => notifyComingSoon('booking')} className="btn btn-primary px-5 py-2.5 font-semibold shadow-md">
-            Đặt sân ngay
-          </button>
-          <button
-            type="button"
-            className="lg:hidden btn border border-border px-3 py-2.5"
-            onClick={() => setOpen((v) => !v)}
-            aria-label="Mở menu"
-          >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-      </div>
-
-      {open && (
-        <nav className="lg:hidden border-t border-border px-4 py-2 flex flex-col">
-          {NAV.map((item) =>
-            item.href ? (
-              <a key={item.label} href={item.href} onClick={() => setOpen(false)} className={linkClass}>{item.label}</a>
-            ) : (
-              <button key={item.label} type="button" onClick={() => handleNav(item)} className={`${linkClass} text-left`}>
-                {item.label}
-              </button>
-            )
-          )}
-        </nav>
-      )}
-    </header>
-  );
-}
-
 function QuickSearch() {
-  const [sport, setSport] = useState('');
-  const [facility, setFacility] = useState(FACILITIES[0]);
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [sportId, setSportId] = useState('');
+  const [facilityId, setFacilityId] = useState('');
   const [date, setDate] = useState(TODAY);
+  const [results, setResults] = useState<CourtAvailability[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([facilityApi.getSports(), facilityApi.getFacilities()]).then(([sportRows, facilityRows]) => {
+      if (!active) return;
+      setSports(sportRows);
+      setFacilities(facilityRows);
+    }).catch((error: unknown) => toast.error(getErrorMessage(error)))
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // TODO (TV1): chuyển sang trang lịch sân với sport, facility, date
-    notifyComingSoon('schedule');
+    if (!sportId || !facilityId) {
+      toast.error('Chọn môn thể thao và cơ sở để tìm sân.');
+      return;
+    }
+    setSearching(true);
+    void facilityApi.getAvailability(Number(facilityId), Number(sportId), date)
+      .then(setResults)
+      .catch((error: unknown) => toast.error(getErrorMessage(error)))
+      .finally(() => setSearching(false));
   };
 
   const fieldClass = 'w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-600';
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white text-gray-900 rounded-3xl shadow-2xl p-7 space-y-4 w-full max-w-md">
+    <form id="quick-search" onSubmit={handleSubmit} className="bg-white text-gray-900 rounded-3xl shadow-2xl p-7 space-y-4 w-full max-w-md">
       <div>
         <h2 className="text-xl font-bold">Tìm sân nhanh</h2>
         <p className="text-sm text-gray-500">Chọn môn, cơ sở, ngày — xem sân trống ngay</p>
       </div>
       <label className="block space-y-1.5">
         <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Môn thể thao</span>
-        <select value={sport} onChange={(e) => setSport(e.target.value)} className={fieldClass}>
-          <option value="">Tất cả môn</option>
-          {SPORTS.map((s) => <option key={s} value={s}>{s}</option>)}
+        <select required disabled={loading} value={sportId} onChange={(e) => setSportId(e.target.value)} className={fieldClass}>
+          <option value="">Chọn môn thể thao</option>
+          {sports.map((sport) => <option key={sport.id} value={sport.id}>{sport.sportName}</option>)}
         </select>
       </label>
       <label className="block space-y-1.5">
         <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Cơ sở</span>
-        <select value={facility} onChange={(e) => setFacility(e.target.value)} className={fieldClass}>
-          {FACILITIES.map((f) => <option key={f} value={f}>{f}</option>)}
+        <select required disabled={loading} value={facilityId} onChange={(e) => setFacilityId(e.target.value)} className={fieldClass}>
+          <option value="">Chọn cơ sở</option>
+          {facilities.map((facility) => <option key={facility.id} value={facility.id}>{facility.name}</option>)}
         </select>
       </label>
       <label className="block space-y-1.5">
         <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Ngày chơi</span>
         <input type="date" value={date} min={TODAY} onChange={(e) => setDate(e.target.value)} className={fieldClass} />
       </label>
-      <button type="submit" className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 hover:from-red-800 hover:to-red-700 text-white font-semibold shadow-lg">
-        <Search size={18} /> Tìm sân ngay
+      <button type="submit" disabled={loading || searching || sports.length === 0 || facilities.length === 0} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-red-700 to-red-600 hover:from-red-800 hover:to-red-700 text-white font-semibold shadow-lg disabled:opacity-60">
+        <Search size={18} /> {searching ? 'Đang tìm...' : 'Tìm sân ngay'}
       </button>
+      {results.length > 0 && <div className="max-h-52 space-y-2 overflow-y-auto border-t border-gray-100 pt-3">
+        {results.map((court) => {
+          const free = court.slots.filter((slot) => slot.isAvailable);
+          return <div key={court.courtId} className="rounded-xl bg-gray-50 p-3">
+            <p className="text-sm font-semibold">{court.courtName} <span className="font-normal text-gray-500">· {free.length} slot trống</span></p>
+            <p className="mt-1 text-xs text-gray-500">{free.slice(0, 3).map((slot) => `${slot.startTime.slice(0, 5)} · ${slot.price.toLocaleString('vi-VN')}đ`).join(' | ') || 'Không còn slot trống'}</p>
+          </div>;
+        })}
+      </div>}
+      {!loading && (sports.length === 0 || facilities.length === 0) && <p className="text-xs text-amber-700">Chưa có danh mục môn thể thao hoặc cơ sở hoạt động.</p>}
     </form>
   );
 }
@@ -198,9 +129,9 @@ function Hero() {
             <button type="button" onClick={() => notifyComingSoon('schedule')} className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-red-700 hover:bg-red-800 font-semibold shadow-lg">
               <Search size={18} /> Tìm sân trống
             </button>
-            <button type="button" onClick={() => notifyComingSoon('facilities')} className="px-7 py-3.5 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 font-semibold">
+            <a href="#quick-search" className="px-7 py-3.5 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 font-semibold text-white">
               Xem tất cả sân
-            </button>
+            </a>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-xl">
             {STATS.map((s) => (
@@ -227,8 +158,7 @@ function Hero() {
 export default function HomePage() {
   return (
     <div id="top" className="min-h-screen bg-background text-text">
-      <TopBar />
-      <NavBar />
+      <PublicSiteHeader />
       <Hero />
 
       <main className="max-w-6xl mx-auto px-4 py-16 space-y-20">
@@ -241,9 +171,9 @@ export default function HomePage() {
                 <span className={`grid h-12 w-12 place-items-center rounded-xl mb-4 ${s.tint}`}><s.icon size={22} /></span>
                 <h3 className="font-semibold mb-2">{s.title}</h3>
                 <p className="text-sm text-muted flex-1">{s.description}</p>
-                <button type="button" onClick={() => notifyComingSoon(s.feature)} className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary text-left hover:gap-2 transition-all">
-                  Xem chi tiết <ArrowRight size={16} />
-                </button>
+                {s.feature
+                  ? <button type="button" onClick={() => s.feature && notifyComingSoon(s.feature)} className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary text-left hover:gap-2 transition-all">Xem chi tiết <ArrowRight size={16} /></button>
+                  : s.to && <Link to={s.to} className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary text-left hover:gap-2 transition-all">Xem chi tiết <ArrowRight size={16} /></Link>}
               </div>
             ))}
           </div>
@@ -265,26 +195,7 @@ export default function HomePage() {
         <SystemStatus />
       </main>
 
-      <footer id="lien-he" className="bg-[#2a0707] text-red-50/85 scroll-mt-24">
-        <div className="max-w-6xl mx-auto px-4 py-12 grid gap-8 md:grid-cols-3">
-          <div>
-            <div className="mb-3"><Brand light /></div>
-            <p className="text-sm">Hệ thống quản lý và đặt sân cho chuỗi cụm sân thể thao đa cơ sở.</p>
-          </div>
-          <div className="text-sm space-y-1">
-            <p className="font-semibold text-white mb-2">Liên hệ</p>
-            <p className="flex items-center gap-2"><Phone size={15} />Hotline: {CONTACT.hotline}</p>
-            <p className="flex items-center gap-2"><Mail size={15} />Email: {CONTACT.email}</p>
-            <p className="flex items-center gap-2"><Clock size={15} />Mở cửa: 06:00 – 23:00 hằng ngày</p>
-          </div>
-          <div className="text-sm space-y-1">
-            <p className="font-semibold text-white mb-2">Tài khoản</p>
-            <Link to="/register" className="block text-red-50/85 hover:text-white">Đăng ký người chơi</Link>
-            <Link to="/login" className="block text-red-50/85 hover:text-white">Đăng nhập</Link>
-          </div>
-        </div>
-        <p className="text-center text-xs text-red-100/60 pb-6">© {CURRENT_YEAR} SportHub · Đồ án Nhóm 11</p>
-      </footer>
+      <PublicSiteFooter />
     </div>
   );
 }
