@@ -1,0 +1,90 @@
+@baseUrl = http://localhost:5000
+@playDate = 2026-11-07
+@facilityId = 1
+@sportId = 1
+@courtId = 1
+@timeSlotId = 10
+@nextTimeSlotId = 11
+
+### Đăng nhập Player Development
+# @name loginPlayer
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "phoneNumber": "0922222201",
+  "password": "Test@1234"
+}
+
+###
+@accessToken = {{loginPlayer.response.body.$.data.accessToken}}
+
+### UC07: Xem trạng thái ma trận sân theo cơ sở, môn và ngày
+GET {{baseUrl}}/api/court/availability?facilityId={{facilityId}}&sportId={{sportId}}&date={{playDate}}
+Accept: application/json
+
+### UC08: Giữ một slot trống (chọn ngày tương lai và slot có status Available)
+# @name holdBooking
+POST {{baseUrl}}/api/booking/hold
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "courtId": {{courtId}},
+  "playDate": "{{playDate}}",
+  "timeSlotId": {{timeSlotId}},
+  "timeSlotIds": [{{timeSlotId}}, {{nextTimeSlotId}}],
+  "guestName": null,
+  "guestPhone": null
+}
+
+### UC08: Request thứ hai cùng slot phải trả về 409 Conflict
+POST {{baseUrl}}/api/booking/hold
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "courtId": {{courtId}},
+  "playDate": "{{playDate}}",
+  "timeSlotId": {{timeSlotId}},
+  "timeSlotIds": [{{timeSlotId}}, {{nextTimeSlotId}}],
+  "guestName": null,
+  "guestPhone": null
+}
+
+### UC28: Tạo URL thanh toán VNPay Sandbox
+# Mở paymentUrl trong response bằng trình duyệt để hoàn tất giao dịch Sandbox.
+# IPN chỉ hoạt động khi VNPay:IpnUrl là HTTPS public và đã đăng ký trong portal VNPay.
+# @name createVnPayPayment
+POST {{baseUrl}}/api/payment/bookings/{{holdBooking.response.body.$.data.id}}/vnpay
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{}
+
+### Kiểm tra trạng thái thanh toán từ server
+GET {{baseUrl}}/api/payment/bookings/{{holdBooking.response.body.$.data.id}}/status
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### Xem đơn của Player hiện tại
+GET {{baseUrl}}/api/booking/my-bookings
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+### UC13: Hủy đơn và gửi yêu cầu hoàn VNPay nếu đủ điều kiện
+POST {{baseUrl}}/api/booking/{{holdBooking.response.body.$.data.id}}/cancel
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "reason": "Kiểm thử chính sách hủy đặt sân"
+}
+
+### IPN giả mạo phải bị từ chối (ResponseCode 97)
+GET {{baseUrl}}/api/payment/vnpay/ipn?vnp_TxnRef=INVALID&vnp_Amount=10000&vnp_ResponseCode=00&vnp_TransactionStatus=00&vnp_TmnCode=INVALID&vnp_SecureHash=invalid
+Accept: application/json
+
+### UC09: Kiểm thử tự nhả slot
+# Tạo Hold ở trên, chờ HoldExpiresAt + 2 phút grace period và tối đa thêm 1 chu kỳ job (60 giây).
+# Sau đó gọi lại UC07; slot phải là Available nếu không bị maintenance/Social/Tournament khóa.
