@@ -86,6 +86,8 @@ public class BookingConfiguration : IEntityTypeConfiguration<Domain.Entities.Boo
         builder.HasIndex(b => b.BookingCode).IsUnique();
         builder.Property(b => b.BookingCode).HasMaxLength(20).IsRequired();
         builder.Property(b => b.TotalAmount).HasPrecision(18, 2);
+        builder.Property(b => b.DiscountAmount).HasPrecision(18, 2);
+        builder.Property(b => b.FinalAmount).HasPrecision(18, 2);
         builder.Property(b => b.BookingStatus).HasConversion<string>();
 
         // Self-referencing FK: CreatedByStaff

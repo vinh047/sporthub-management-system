@@ -6,16 +6,43 @@ using SportHub.Domain.Entities.Player;
 
 namespace SportHub.Infrastructure.Persistence.Seed;
 
-/// <summary>
-/// Tạo dữ liệu nền cho môi trường Development: vai trò, tài khoản Admin và Staff mẫu.
-/// Chạy nhiều lần không bị trùng.
-/// </summary>
 public static class DataSeeder
 {
     public const string AdminPhone = "0900000000";
     public const string AdminPassword = "Admin@123";
-    public const string StaffPhone = "0900000001";
+    public const string StaffPhone = "0900000002";
     public const string StaffPassword = "Staff@123";
+    public const string PlayerPassword = "Test@1234";
+
+    private static readonly (string Name, string Phone, int Reputation, decimal Skill, string Level, int Points, string Tier)[] PlayerSeeds =
+    [
+        ("Pham Minh Dung", "0922222201", 100, 3.50m, "Intermediate", 250, "Silver"),
+        ("Hoang Thi Lan", "0922222202", 95, 2.10m, "Beginner", 50, "Bronze"),
+        ("Vu Duc Khai", "0922222203", 100, 4.20m, "Advanced", 800, "Gold"),
+        ("Ngo Thi Mai", "0922222204", 80, 2.50m, "Beginner", 30, "Bronze"),
+        ("Dinh Van Nam", "0922222205", 100, 3.80m, "Intermediate", 410, "Silver"),
+        ("Bui Thi Oanh", "0922222206", 60, 2.00m, "Beginner", 10, "Bronze"),
+        ("Nguyen Gia Bao", "0930000001", 100, 3.10m, "Intermediate", 120, "Bronze"),
+        ("Tran Ngoc Anh", "0930000002", 92, 2.80m, "Beginner", 85, "Bronze"),
+        ("Le Quoc Huy", "0930000003", 100, 4.60m, "Advanced", 1250, "Gold"),
+        ("Pham Thuy Linh", "0930000004", 98, 3.40m, "Intermediate", 340, "Silver"),
+        ("Vo Minh Khang", "0930000005", 75, 2.20m, "Beginner", 40, "Bronze"),
+        ("Bui Khanh Vy", "0930000006", 100, 3.90m, "Intermediate", 620, "Gold"),
+        ("Dang Tuan Kiet", "0930000007", 88, 3.00m, "Intermediate", 160, "Bronze"),
+        ("Hoang My Duyen", "0930000008", 100, 4.10m, "Advanced", 910, "Gold"),
+        ("Do Thanh Phuc", "0930000009", 55, 1.80m, "Beginner", 0, "Bronze"),
+        ("Nguyen Bao Tram", "0930000010", 97, 3.30m, "Intermediate", 275, "Silver"),
+        ("Pham Duc Thinh", "0930000011", 100, 4.80m, "Advanced", 1640, "Diamond"),
+        ("Truong Nhu Quynh", "0930000012", 82, 2.60m, "Beginner", 65, "Bronze"),
+        ("Mai Hoang Long", "0930000013", 100, 3.70m, "Intermediate", 530, "Silver"),
+        ("Ly Tuong Vi", "0930000014", 93, 3.20m, "Intermediate", 215, "Silver"),
+        ("Cao Anh Tuan", "0930000015", 100, 4.30m, "Advanced", 1080, "Gold"),
+        ("Phan Ngoc Han", "0930000016", 69, 2.00m, "Beginner", 20, "Bronze"),
+        ("Huynh Nhat Minh", "0930000017", 99, 3.60m, "Intermediate", 445, "Silver"),
+        ("Ta Phuong Thao", "0930000018", 100, 4.00m, "Advanced", 770, "Gold"),
+        ("Ngo Duc Anh", "0930000019", 90, 2.90m, "Beginner", 105, "Bronze"),
+        ("Luong Thu Ha", "0930000020", 100, 3.50m, "Intermediate", 390, "Silver")
+    ];
 
     public static async Task SeedDevelopmentDataAsync(this IServiceProvider services)
     {
@@ -23,7 +50,6 @@ public static class DataSeeder
         var db = scope.ServiceProvider.GetRequiredService<SportHubDbContext>();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
-        // 1. Vai trò
         var roleSeeds = new[]
         {
             ("ADMIN", "Quản trị viên", "Toàn quyền hệ thống"),
@@ -32,56 +58,145 @@ public static class DataSeeder
         };
         foreach (var (code, name, description) in roleSeeds)
         {
-            if (!await db.Roles.AnyAsync(r => r.RoleCode == code))
+            if (!await db.Roles.AnyAsync(role => role.RoleCode == code))
                 db.Roles.Add(new Role { RoleCode = code, RoleName = name, Description = description });
         }
         await db.SaveChangesAsync();
 
-        var roles = await db.Roles.ToDictionaryAsync(r => r.RoleCode);
-        var firstFacilityId = await db.Facilities.OrderBy(f => f.Id).Select(f => (int?)f.Id).FirstOrDefaultAsync();
+        var roles = await db.Roles.ToDictionaryAsync(role => role.RoleCode);
+        var firstFacilityId = await db.Facilities
+            .OrderBy(facility => facility.Id)
+            .Select(facility => (int?)facility.Id)
+            .FirstOrDefaultAsync();
 
-        // 2. Tài khoản Admin mẫu
-        if (!await db.Users.AnyAsync(u => u.PhoneNumber == AdminPhone))
+        await EnsureDemoUserAsync(
+            db,
+            roles["ADMIN"],
+            AdminPhone,
+            AdminPassword,
+            "Quản trị viên SportHub",
+            hasher);
+        await EnsureDemoStaffAsync(db, roles["STAFF"], firstFacilityId, hasher);
+        await EnsureDemoPlayersAsync(db, roles["PLAYER"], hasher);
+
+        var usersWithoutRole = await db.Users.Where(user => user.UserRole == null).ToListAsync();
+        foreach (var user in usersWithoutRole)
+            user.UserRole = new UserRole { Role = roles["PLAYER"] };
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task EnsureDemoUserAsync(
+        SportHubDbContext db,
+        Role role,
+        string phone,
+        string password,
+        string fullName,
+        IPasswordHasher hasher)
+    {
+        var user = await db.Users
+            .Include(item => item.UserRole)
+            .FirstOrDefaultAsync(item => item.PhoneNumber == phone);
+        var passwordHash = hasher.Hash(password);
+
+        if (user is null)
         {
             db.Users.Add(new User
             {
-                FullName = "Quản trị viên",
-                PhoneNumber = AdminPhone,
-                PasswordHash = hasher.Hash(AdminPassword),
-                UserRole = new UserRole { Role = roles["ADMIN"] }
+                FullName = fullName,
+                PhoneNumber = phone,
+                PasswordHash = passwordHash,
+                IsActive = true,
+                UserRole = new UserRole { Role = role }
             });
+            return;
         }
 
-        // 3. Tài khoản Staff mẫu, gắn vào cơ sở đầu tiên (nếu đã có cơ sở)
-        var staff = await db.Users.Include(u => u.StaffProfile).FirstOrDefaultAsync(u => u.PhoneNumber == StaffPhone);
+        user.PasswordHash = passwordHash;
+        user.IsActive = true;
+        if (user.UserRole is null)
+            user.UserRole = new UserRole { Role = role };
+    }
+
+    private static async Task EnsureDemoStaffAsync(
+        SportHubDbContext db,
+        Role staffRole,
+        int? facilityId,
+        IPasswordHasher hasher)
+    {
+        var staff = await db.Users
+            .Include(user => user.StaffProfile)
+            .Include(user => user.UserRole)
+            .FirstOrDefaultAsync(user => user.PhoneNumber == StaffPhone);
+
         if (staff is null)
         {
             db.Users.Add(new User
             {
-                FullName = "Nhân viên lễ tân",
+                FullName = "Nhân viên lễ tân SportHub",
                 PhoneNumber = StaffPhone,
                 PasswordHash = hasher.Hash(StaffPassword),
-                UserRole = new UserRole { Role = roles["STAFF"] },
-                StaffProfile = new StaffProfile { ManagedFacilityId = firstFacilityId, Position = "Lễ tân" }
+                IsActive = true,
+                UserRole = new UserRole { Role = staffRole },
+                StaffProfile = new StaffProfile { ManagedFacilityId = facilityId, Position = "Lễ tân" }
             });
+            return;
         }
-        else if (staff.StaffProfile is { ManagedFacilityId: null } && firstFacilityId is not null)
+
+        staff.PasswordHash = hasher.Hash(StaffPassword);
+        staff.IsActive = true;
+        staff.UserRole ??= new UserRole { Role = staffRole };
+        staff.StaffProfile ??= new StaffProfile { ManagedFacilityId = facilityId, Position = "Lễ tân" };
+        if (staff.StaffProfile.ManagedFacilityId is null && facilityId is not null)
+            staff.StaffProfile.ManagedFacilityId = facilityId;
+    }
+
+    private static async Task EnsureDemoPlayersAsync(
+        SportHubDbContext db,
+        Role playerRole,
+        IPasswordHasher hasher)
+    {
+        var playerPhones = PlayerSeeds.Select(seed => seed.Phone).ToArray();
+        var playersByPhone = await db.Users
+            .Include(user => user.UserRole)
+            .Include(user => user.PlayerProfile)
+            .Where(user => playerPhones.Contains(user.PhoneNumber))
+            .ToDictionaryAsync(user => user.PhoneNumber);
+        var passwordHash = hasher.Hash(PlayerPassword);
+
+        foreach (var seed in PlayerSeeds)
         {
-            staff.StaffProfile.ManagedFacilityId = firstFacilityId;
+            if (!playersByPhone.TryGetValue(seed.Phone, out var player))
+            {
+                db.Users.Add(new User
+                {
+                    FullName = seed.Name,
+                    PhoneNumber = seed.Phone,
+                    PasswordHash = passwordHash,
+                    IsActive = true,
+                    UserRole = new UserRole { Role = playerRole },
+                    PlayerProfile = CreatePlayerProfile(seed)
+                });
+                continue;
+            }
+
+            player.PasswordHash = passwordHash;
+            player.IsActive = true;
+            player.UserRole ??= new UserRole { Role = playerRole };
+            player.PlayerProfile ??= CreatePlayerProfile(seed);
         }
-
-        // 4. Tài khoản tạo trước đây chưa có vai trò hoặc hồ sơ thì bổ sung thành người chơi
-        var usersWithoutRole = await db.Users.Where(u => u.UserRole == null).ToListAsync();
-        foreach (var user in usersWithoutRole)
-            user.UserRole = new UserRole { Role = roles["PLAYER"] };
-        await db.SaveChangesAsync();   // lưu trước để câu truy vấn dưới thấy vai trò vừa gán
-
-        var playersWithoutProfile = await db.Users
-            .Where(u => u.UserRole != null && u.UserRole.Role.RoleCode == "PLAYER" && u.PlayerProfile == null)
-            .ToListAsync();
-        foreach (var user in playersWithoutProfile)
-            user.PlayerProfile = new PlayerProfile();
 
         await db.SaveChangesAsync();
     }
+
+    private static PlayerProfile CreatePlayerProfile(
+        (string Name, string Phone, int Reputation, decimal Skill, string Level, int Points, string Tier) seed)
+        => new()
+        {
+            ReputationScore = seed.Reputation,
+            NumericSkillRating = seed.Skill,
+            SkillLevel = seed.Level,
+            LoyaltyPoints = seed.Points,
+            CurrentTier = seed.Tier
+        };
 }

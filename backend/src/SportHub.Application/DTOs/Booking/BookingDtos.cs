@@ -9,12 +9,10 @@ public record HoldSlotRequest(
     // Guest fields (khi Staff đặt hộ)
     string? GuestName,
     string? GuestPhone
-);
-
-public record ConfirmBookingRequest(
-    int PaymentMethodId,
-    string? ReferenceCode   // Mã chuyển khoản / QR code
-);
+)
+{
+    public List<int>? TimeSlotIds { get; init; }
+}
 
 public record CancelBookingRequest(string Reason);
 
@@ -26,7 +24,20 @@ public record BookingResponse(
     string Status,
     decimal TotalAmount,
     DateTime? HoldExpiresAt,
-    List<BookingDetailDto> Details
+    List<BookingDetailDto> Details,
+    string? PaymentStatus = null,
+    string? RefundStatus = null,
+    decimal? RefundAmount = null
+);
+
+public record BookingPaymentStatusResponse(
+    int BookingId,
+    string BookingCode,
+    string BookingStatus,
+    string? PaymentStatus,
+    string? RefundStatus,
+    decimal RefundAmount,
+    string? RefundNote
 );
 
 public record BookingDetailDto(
