@@ -8,7 +8,7 @@ using SportHub.Domain.Exceptions;
 namespace SportHub.API.Controllers;
 
 [Route("api/[controller]")]
-public class BookingController(IBookingService bookingService, IPaymentService paymentService) : ApiControllerBase
+public class BookingController(IBookingService bookingService) : ApiControllerBase
 {
     /// <summary>Giữ chỗ 10 phút (hỗ trợ cả Player đăng nhập và Khách vãng lai)</summary>
     [HttpPost("hold")]
@@ -25,26 +25,22 @@ public class BookingController(IBookingService bookingService, IPaymentService p
         return StatusCode(201, BaseResponse<BookingResponse>.Ok(result, "Giữ chỗ thành công. Thanh toán trong 10 phút."));
     }
 
+    /// <summary>Xác nhận thanh toán</summary>
+    [HttpPost("{id}/confirm")]
+    [Authorize]
+    public async Task<ActionResult<BaseResponse<BookingResponse>>> Confirm(int id, [FromBody] ConfirmBookingRequest request)
+    {
+        var result = await bookingService.ConfirmBookingAsync(id, request);
+        return Ok(BaseResponse<BookingResponse>.Ok(result, "Đặt sân thành công!"));
+    }
+
     /// <summary>Hủy đơn đặt sân</summary>
     [HttpPost("{id}/cancel")]
     [Authorize]
-    public async Task<ActionResult<BaseResponse<BookingPaymentStatusResponse>>> Cancel(
-        int id,
-        [FromBody] CancelBookingRequest request,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<BaseResponse>> Cancel(int id, [FromBody] CancelBookingRequest request)
     {
         await bookingService.CancelBookingAsync(id, RequiredUserId, request.Reason);
-        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
-        var result = await paymentService.ProcessCancellationRefundAsync(
-            id,
-            RequiredUserId,
-            clientIp,
-            cancellationToken);
-        return Ok(BaseResponse<BookingPaymentStatusResponse>.Ok(
-            result,
-            result.RefundStatus == "Processing"
-                ? "Đã hủy đơn. Yêu cầu hoàn tiền đang được xử lý; dự kiến nhận tiền sau 1–3 ngày làm việc."
-                : "Đã hủy đơn."));
+        return Ok(BaseResponse.Ok("Hủy đơn thành công."));
     }
 
     /// <summary>Lịch sử đặt sân của user hiện tại</summary>
@@ -58,10 +54,9 @@ public class BookingController(IBookingService bookingService, IPaymentService p
 
     /// <summary>Chi tiết đơn đặt sân</summary>
     [HttpGet("{id}")]
-    [Authorize]
     public async Task<ActionResult<BaseResponse<BookingDetailResponse>>> GetDetail(int id)
     {
-        var result = await bookingService.GetBookingDetailAsync(id, RequiredUserId);
+        var result = await bookingService.GetBookingDetailAsync(id);
         return Ok(BaseResponse<BookingDetailResponse>.Ok(result));
     }
 }

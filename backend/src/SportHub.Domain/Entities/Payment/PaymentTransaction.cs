@@ -14,17 +14,10 @@ public class PaymentTransaction : BaseEntity
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
     public DateTime? ProcessedAt { get; set; }
     public int? StaffVerifierId { get; set; }        // Staff xác nhận thanh toán
-    public PaymentTransactionType TransactionType { get; set; } = PaymentTransactionType.Payment;
-    public string? ProviderTransactionId { get; set; }
-    public DateTime? ProviderTransactionDate { get; set; }
-    public int? RelatedTransactionId { get; set; }
-    public string? PaymentUrl { get; set; }
 
     public Booking.Booking? Booking { get; set; }
     public Social.SocialParticipant? SocialParticipant { get; set; }
     public Tournament.TournamentTeam? TournamentTeam { get; set; }
     public PaymentMethod PaymentMethod { get; set; } = null!;
     public Auth.User? StaffVerifier { get; set; }
-    public PaymentTransaction? RelatedTransaction { get; set; }
-    public ICollection<PaymentTransaction> RelatedTransactions { get; set; } = [];
 }
