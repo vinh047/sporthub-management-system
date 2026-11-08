@@ -9,7 +9,9 @@ public interface IUnitOfWork : IDisposable
     IFacilityRepository Facilities { get; }
     IPromotionRepository Promotions { get; }
     IBookingRepository Bookings { get; }
+    IPaymentRepository Payments { get; }
     ICourtRepository Courts { get; }
+    IPricingRepository Pricing { get; }
     ISocialSessionRepository SocialSessions { get; }
     ITournamentRepository Tournaments { get; }
     ICheckInRepository CheckIns { get; }

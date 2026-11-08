@@ -1,12 +1,11 @@
 using SportHub.Application.DTOs.Facility;
-using SportHub.Application.Interfaces.Repositories;
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Facility;
 using SportHub.Domain.Exceptions;
 
 namespace SportHub.Application.Services;
 
-public class FacilityService(IUnitOfWork uow) : IFacilityService
+public class FacilityService : IFacilityService
 {
     public async Task<FacilityResponse> CreateFacilityAsync(CreateFacilityRequest request)
     {

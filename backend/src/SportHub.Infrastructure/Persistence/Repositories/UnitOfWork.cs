@@ -1,5 +1,6 @@
+﻿using System.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using System.Data;
 using SportHub.Application.Interfaces.Repositories;
 
 namespace SportHub.Infrastructure.Persistence.Repositories;
@@ -12,7 +13,9 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
     public IFacilityRepository Facilities { get; } = new FacilityRepository(context);
     public IPromotionRepository Promotions { get; } = new PromotionRepository(context);
     public IBookingRepository Bookings { get; } = new BookingRepository(context);
+    public IPaymentRepository Payments { get; } = new PaymentRepository(context);
     public ICourtRepository Courts { get; } = new CourtRepository(context);
+    public IPricingRepository Pricing { get; } = new PricingRepository(context);
     public ISocialSessionRepository SocialSessions { get; } = new SocialSessionRepository(context);
     public ITournamentRepository Tournaments { get; } = new TournamentRepository(context);
     public ICheckInRepository CheckIns { get; } = new CheckInRepository(context);
@@ -21,8 +24,7 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
         => await context.SaveChangesAsync(ct);
 
     public async Task BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
-        => _transaction = await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions
-            .BeginTransactionAsync(context.Database, isolationLevel, CancellationToken.None);
+        => _transaction = await context.Database.BeginTransactionAsync(isolationLevel);
 
     public async Task CommitTransactionAsync()
     {

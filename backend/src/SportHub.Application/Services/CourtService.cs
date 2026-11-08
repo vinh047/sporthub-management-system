@@ -1,4 +1,4 @@
-using SportHub.Application.DTOs.Facility;
+﻿using SportHub.Application.DTOs.Facility;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Facility;
@@ -70,9 +70,10 @@ public class CourtService(IUnitOfWork uow) : ICourtService
                 var price = rule?.HourlyRate ?? policy?.BasePrice ?? 0;
                 if (policy is not null && date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                     price *= 1 + policy.WeekendSurchargePercent / 100;
-                var available = await uow.Bookings.IsSlotAvailableAsync(court.Id, date, slot.Id);
+                var status = await uow.Bookings.GetSlotStatusAsync(court.Id, date, slot.Id);
+                var available = status == "Available";
                 values.Add(new SlotAvailability(slot.Id, slot.StartTime, slot.EndTime,
-                    available, rule?.IsPeakHour ?? slot.IsDefaultPeak, price));
+                    available, rule?.IsPeakHour ?? slot.IsDefaultPeak, price, status));
             }
             result.Add(new(court.Id, court.CourtName, values));
         }

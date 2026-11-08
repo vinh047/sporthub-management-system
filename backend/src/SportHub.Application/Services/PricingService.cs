@@ -1,4 +1,4 @@
-using SportHub.Application.DTOs.Facility;
+﻿using SportHub.Application.DTOs.Facility;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Facility;
@@ -20,6 +20,18 @@ public class PricingService(IUnitOfWork uow) : IPricingService
         if (policy is not null && playDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
             price *= 1 + policy.WeekendSurchargePercent / 100;
         return price;
+    }
+
+    public async Task<IReadOnlyDictionary<int, decimal>> GetSlotPricesAsync(int courtId, DateOnly playDate)
+    {
+        if (courtId <= 0)
+            throw new ValidationException(["Sân không hợp lệ."]);
+
+        var prices = await uow.Pricing.GetSlotPricesAsync(courtId, playDate);
+        if (prices.Count == 0)
+            throw new ValidationException(["Không tìm thấy sân đang hoạt động hoặc chính sách giá cho ngày này."]);
+
+        return prices;
     }
 
     public async Task UpsertPricePolicyAsync(UpsertPricePolicyRequest request)
