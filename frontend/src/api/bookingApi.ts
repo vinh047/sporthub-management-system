@@ -43,6 +43,8 @@ export interface Booking {
   bookingCode: string;
   status: BookingStatus | string;
   totalAmount: number;
+  discountAmount?: number;
+  finalAmount?: number;
   holdExpiresAt: string | null;
   details: BookingDetail[];
   paymentStatus?: string | null;
