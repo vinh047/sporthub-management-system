@@ -42,7 +42,10 @@ bld/
 
 # Visual Studio 2017 auto generated files
 Generated\ Files/
-docs/
+docs/*
+!docs/bao-cao-tv1-booking.md
+!docs/bao-cao-ra-soat-tv1-ui-booking.md
+!docs/bao-cao-hoan-thanh-nhiem-vu-tv1.md
 # MSTest test Results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
@@ -480,3 +483,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+*.agents
+!frontend/.agents/
+!frontend/.agents/**
