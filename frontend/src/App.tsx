@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ProtectedRoute } from './utils/authGuard';
 import HomePage from './page/user/HomePage';
@@ -6,6 +6,8 @@ import LoginPage from './page/auth/LoginPage';
 import RegisterPage from './page/auth/RegisterPage';
 import PlayerLayout from './layouts/PlayerLayout';
 import PlayerHomePage from './page/user/PlayerHomePage';
+import BookingPage from './page/user/BookingPage';
+import MyBookingsPage from './page/user/MyBookingsPage';
 import AdminLayout from './layouts/AdminLayout';
 import StaffHomePage from './page/admin/StaffHomePage';
 import AdminHomePage from './page/admin/AdminHomePage';
@@ -35,7 +37,6 @@ function App() {
       <Routes>
         {/* Công khai */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/vouchers" element={<VouchersPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
@@ -49,6 +50,8 @@ function App() {
           }
         >
           <Route index element={<PlayerHomePage />} />
+          <Route path="booking" element={<BookingPage />} />
+          <Route path="my-bookings" element={<MyBookingsPage />} />
           <Route path="vouchers" element={<VouchersPage />} />
         </Route>
 
