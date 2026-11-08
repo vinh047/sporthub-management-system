@@ -3,8 +3,12 @@ using SportHub.API.Extensions;
 using SportHub.API.Hubs;
 using SportHub.API.Middleware;
 using SportHub.Application;
+using SportHub.Application.Interfaces.Services;
+using SportHub.Application.Services;
 using SportHub.Infrastructure;
 using SportHub.Infrastructure.Persistence.Seed;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +30,10 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddApiHealthChecks();
+builder.Services.AddScoped<IStaffProfileService, StaffProfileService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPlayerProfileService, PlayerProfileService>();
+
 
 // Clean Architecture Layers
 builder.Services.AddApplicationServices();
@@ -45,8 +53,15 @@ app.UseMiddleware<GlobalExceptionHandler>();
 app.UseSwaggerDocumentation();
 
 app.UseSerilogRequestLogging();
-app.UseHttpsRedirection();
+
+// Chỉ chuyển HTTPS trong môi trường Production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseFrontendCors();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
