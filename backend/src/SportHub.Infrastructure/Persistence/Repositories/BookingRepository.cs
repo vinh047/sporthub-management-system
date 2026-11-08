@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Domain.Entities.Booking;
 using SportHub.Domain.Enums;
@@ -14,6 +14,10 @@ public class BookingRepository(SportHubDbContext context)
             .Include(b => b.Details).ThenInclude(d => d.TimeSlot)
             .Include(b => b.PaymentTransactions)
             .FirstOrDefaultAsync(b => b.BookingCode == code);
+
+    public Task<Booking?> GetForVoucherAsync(int bookingId)
+        => _dbSet.Include(b => b.Details).ThenInclude(d => d.TimeSlot)
+            .FirstOrDefaultAsync(b => b.Id == bookingId);
 
     public async Task<Booking?> GetByIdWithDetailsAsync(int id)
         => await _dbSet

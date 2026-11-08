@@ -9,11 +9,8 @@ using BookingEntity = SportHub.Domain.Entities.Booking.Booking;
 
 namespace SportHub.Application.Services;
 
-public class PosService(IUnitOfWork uow) : IPosService
+public class PosService(IUnitOfWork uow, IPricingService pricing) : IPosService
 {
-    // TODO: thay bằng IPricingService của TV3 khi có bảng giá
-    private const decimal TempSlotPrice = 100_000m;
-
     public async Task<PosBookingResponse> CreateBookingAsync(PosBookingRequest request, int staffUserId, bool isAdmin)
     {
         var errors = new List<string>();
@@ -37,13 +34,16 @@ public class PosService(IUnitOfWork uow) : IPosService
                 throw new ForbiddenException("Bạn không được phân công ở cơ sở này.");
         }
 
+        var slotPrices = new Dictionary<int, decimal>();
         foreach (var slotId in request.TimeSlotIds)
         {
             if (!await uow.Bookings.IsSlotAvailableAsync(court.Id, request.PlayDate, slotId))
                 throw new ConflictException($"Khung giờ {slotId} vừa có người đặt hoặc đang bảo trì.");
+            slotPrices.Add(slotId,
+                await pricing.CalculateSlotPriceAsync(court.Id, request.PlayDate, slotId));
         }
 
-        var total = TempSlotPrice * request.TimeSlotIds.Count;
+        var total = slotPrices.Values.Sum();
         var booking = new BookingEntity
         {
             BookingCode = $"POS{DateTime.Now:yyMMddHHmmss}",
@@ -62,7 +62,7 @@ public class PosService(IUnitOfWork uow) : IPosService
                 CourtId = court.Id,
                 PlayDate = request.PlayDate,
                 TimeSlotId = slotId,
-                SlotPrice = TempSlotPrice
+                SlotPrice = slotPrices[slotId]
             });
         }
 

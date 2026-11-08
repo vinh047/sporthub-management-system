@@ -1,7 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Auth;
+using SportHub.Domain.Entities.Facility;
 using SportHub.Domain.Entities.Player;
 
 namespace SportHub.Infrastructure.Persistence.Seed;
@@ -64,6 +65,19 @@ public static class DataSeeder
         await db.SaveChangesAsync();
 
         var roles = await db.Roles.ToDictionaryAsync(role => role.RoleCode);
+        var sportSeeds = new[]
+        {
+            ("BADMINTON", "Cầu lông"),
+            ("PICKLEBALL", "Pickleball"),
+            ("FOOTBALL5", "Bóng đá 5 người"),
+        };
+        foreach (var (code, name) in sportSeeds)
+        {
+            if (!await db.Sports.AnyAsync(sport => sport.SportCode == code))
+                db.Sports.Add(new Sport { SportCode = code, SportName = name });
+        }
+        await db.SaveChangesAsync();
+
         var firstFacilityId = await db.Facilities
             .OrderBy(facility => facility.Id)
             .Select(facility => (int?)facility.Id)

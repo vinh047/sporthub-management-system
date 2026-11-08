@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ProtectedRoute } from './utils/authGuard';
 import HomePage from './page/user/HomePage';
@@ -13,6 +13,11 @@ import StaffHomePage from './page/admin/StaffHomePage';
 import AdminHomePage from './page/admin/AdminHomePage';
 import ReceptionPage from './page/admin/ReceptionPage';
 import PosPage from './page/admin/PosPage';
+import FacilitiesPage from './page/admin/FacilitiesPage';
+import MaintenancePage from './page/admin/MaintenancePage';
+import PricingPage from './page/admin/PricingPage';
+import PromotionsPage from './page/admin/PromotionsPage';
+import VouchersPage from './page/user/VouchersPage';
 
 function App() {
   return (
@@ -47,6 +52,7 @@ function App() {
           <Route index element={<PlayerHomePage />} />
           <Route path="booking" element={<BookingPage />} />
           <Route path="my-bookings" element={<MyBookingsPage />} />
+          <Route path="vouchers" element={<VouchersPage />} />
         </Route>
 
         {/* Nhân viên (Admin cũng vào được) */}
@@ -61,6 +67,7 @@ function App() {
           <Route index element={<StaffHomePage />} />
           <Route path="reception" element={<ReceptionPage />} />
           <Route path="pos" element={<PosPage />} />
+          <Route path="maintenance" element={<MaintenancePage />} />
         </Route>
 
         {/* Quản trị */}
@@ -75,6 +82,10 @@ function App() {
           <Route index element={<AdminHomePage />} />
           <Route path="reception" element={<ReceptionPage />} />
           <Route path="pos" element={<PosPage />} />
+          <Route path="maintenance" element={<MaintenancePage />} />
+          <Route path="facilities" element={<FacilitiesPage />} />
+          <Route path="pricing" element={<PricingPage />} />
+          <Route path="promotions" element={<PromotionsPage />} />
         </Route>
 
         {/* 404 Catch All */}

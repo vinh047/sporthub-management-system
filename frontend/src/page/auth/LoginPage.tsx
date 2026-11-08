@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -27,6 +27,8 @@ export default function LoginPage() {
   } | null)?.from;
   const playerReturnPath = requestedPath?.pathname?.startsWith('/player/')
     ? `${requestedPath.pathname}${requestedPath.search ?? ''}${requestedPath.hash ?? ''}`
+    : requestedPath?.pathname === '/vouchers'
+      ? `${requestedPath.pathname}${requestedPath.search ?? ''}${requestedPath.hash ?? ''}`
     : null;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');

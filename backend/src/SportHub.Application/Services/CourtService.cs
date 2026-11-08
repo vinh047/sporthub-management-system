@@ -1,57 +1,100 @@
-using SportHub.Application.DTOs.Facility;
+﻿using SportHub.Application.DTOs.Facility;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Application.Interfaces.Services;
+using SportHub.Domain.Entities.Facility;
+using SportHub.Domain.Enums;
+using SportHub.Domain.Exceptions;
 
 namespace SportHub.Application.Services;
 
-public class CourtService(IUnitOfWork uow, IPricingService pricing) : ICourtService
+public class CourtService(IUnitOfWork uow) : ICourtService
 {
-    public Task<CourtResponse> CreateCourtAsync(CreateCourtRequest request) => throw new NotImplementedException();
+    public async Task<CourtResponse> CreateCourtAsync(CreateCourtRequest request)
+    {
+        var created = await CreateCourtsAsync(new CreateCourtsRequest(
+            request.FacilityId, request.SportId, request.CourtName.Trim(), 1, request.CourtType));
+        return created.Single();
+    }
 
-    public async Task<IEnumerable<CourtAvailabilityResponse>> GetAvailableCourtSlotsAsync(int facilityId, int sportId, DateOnly date)
+    public async Task<IEnumerable<CourtResponse>> CreateCourtsAsync(CreateCourtsRequest request)
+    {
+        if (request.Count is < 1 or > 100)
+            throw new ValidationException(["Số lượng sân phải từ 1 đến 100."]);
+        if (string.IsNullOrWhiteSpace(request.NamePrefix))
+            throw new ValidationException(["Tên tiền tố của sân không được để trống."]);
+        var facility = await uow.Facilities.GetByIdAsync(request.FacilityId)
+            ?? throw new NotFoundException("Cơ sở", request.FacilityId);
+        if (!facility.IsActive)
+            throw new ValidationException(["Không thể thêm sân vào cơ sở đã ngừng hoạt động."]);
+        var sport = await uow.Facilities.GetSportByIdAsync(request.SportId)
+            ?? throw new NotFoundException("Môn thể thao", request.SportId);
+        if (!Enum.TryParse<CourtType>(request.CourtType, true, out var courtType))
+            throw new ValidationException(["Loại sân chỉ được là Indoor hoặc Outdoor."]);
+
+        var prefix = request.NamePrefix.Trim();
+        string[] names = request.Count == 1
+            ? [prefix]
+            : Enumerable.Range(1, request.Count).Select(index => $"{prefix} {index:00}").ToArray();
+        if (await uow.Courts.CourtNamesExistAsync(facility.Id, names))
+            throw new ConflictException("Một hoặc nhiều tên sân đã tồn tại tại cơ sở này.");
+
+        var courts = names.Select(name => new Court
+        {
+            FacilityId = facility.Id,
+            SportId = sport.Id,
+            CourtName = name,
+            CourtType = courtType
+        }).ToList();
+        foreach (var court in courts)
+            await uow.Courts.AddAsync(court);
+        await uow.SaveChangesAsync();
+        return courts.Select(c => new CourtResponse(
+            c.Id, c.FacilityId, c.SportId, sport.SportName,
+            c.CourtName, c.CourtType.ToString(), c.IsActive));
+    }
+
+    public async Task<IEnumerable<CourtAvailabilityResponse>> GetAvailableCourtSlotsAsync(
+        int facilityId, int sportId, DateOnly date)
     {
         var courts = await uow.Courts.GetAvailableCourtsAsync(facilityId, sportId, date);
-        var courtList = courts.ToList();
-        if (courtList.Count == 0)
-        {
-            return [];
-        }
-
+        var slots = await uow.Facilities.GetTimeSlotsAsync();
+        var policy = await uow.Facilities.GetPricePolicyAsync(facilityId, sportId, date);
+        var rules = policy?.PriceRuleDetails.ToDictionary(r => r.TimeSlotId);
         var result = new List<CourtAvailabilityResponse>();
-
-        foreach (var court in courtList)
+        foreach (var court in courts)
         {
-            var prices = await pricing.GetSlotPricesAsync(court.Id, date);
-            var slots = new List<SlotAvailability>();
-            for (int slotId = 1; slotId <= 17; slotId++)
+            var values = new List<SlotAvailability>();
+            foreach (var slot in slots)
             {
-                if (!prices.TryGetValue(slotId, out var price))
-                    throw new InvalidOperationException($"Missing price for court {court.Id}, date {date}, slot {slotId}.");
-
-                var startHour = 5 + slotId;
-                var status = await uow.Bookings.GetSlotStatusAsync(court.Id, date, slotId);
-                var isAvailable = status == "Available";
-
-                slots.Add(new SlotAvailability(
-                    slotId,
-                    new TimeOnly(startHour, 0),
-                    new TimeOnly(startHour + 1, 0),
-                    isAvailable,
-                    startHour >= 17 && startHour < 21,
-                    price,
-                    status
-                ));
+                var rule = rules?.GetValueOrDefault(slot.Id);
+                var price = rule?.HourlyRate ?? policy?.BasePrice ?? 0;
+                if (policy is not null && date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                    price *= 1 + policy.WeekendSurchargePercent / 100;
+                var status = await uow.Bookings.GetSlotStatusAsync(court.Id, date, slot.Id);
+                var available = status == "Available";
+                values.Add(new SlotAvailability(slot.Id, slot.StartTime, slot.EndTime,
+                    available, rule?.IsPeakHour ?? slot.IsDefaultPeak, price, status));
             }
-
-            result.Add(new CourtAvailabilityResponse(
-                court.Id,
-                court.CourtName,
-                slots
-            ));
+            result.Add(new(court.Id, court.CourtName, values));
         }
-
         return result;
     }
 
-    public Task LockCourtForMaintenanceAsync(LockCourtRequest request) => throw new NotImplementedException();
+    public async Task LockCourtForMaintenanceAsync(LockCourtRequest request, int createdByUserId)
+    {
+        if (request.StartTime >= request.EndTime)
+            throw new ValidationException(["Thời gian bảo trì không hợp lệ."]);
+        var court = await uow.Courts.GetByIdAsync(request.CourtId)
+            ?? throw new NotFoundException("Sân", request.CourtId);
+        if (await uow.Facilities.HasMaintenanceOverlapAsync(
+                court.Id, request.MaintenanceDate, request.StartTime, request.EndTime))
+            throw new ConflictException("Khoảng thời gian bảo trì bị trùng.");
+        await uow.Facilities.AddMaintenanceAsync(new CourtMaintenance
+        {
+            CourtId = court.Id, MaintenanceDate = request.MaintenanceDate,
+            StartTime = request.StartTime, EndTime = request.EndTime,
+            Reason = request.Reason.Trim(), CreatedByUserId = createdByUserId
+        });
+        await uow.SaveChangesAsync();
+    }
 }

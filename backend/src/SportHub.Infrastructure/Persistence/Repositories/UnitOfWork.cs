@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using SportHub.Application.Interfaces.Repositories;
@@ -10,6 +10,8 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
     private IDbContextTransaction? _transaction;
 
     public IUserRepository Users { get; } = new UserRepository(context);
+    public IFacilityRepository Facilities { get; } = new FacilityRepository(context);
+    public IPromotionRepository Promotions { get; } = new PromotionRepository(context);
     public IBookingRepository Bookings { get; } = new BookingRepository(context);
     public IPaymentRepository Payments { get; } = new PaymentRepository(context);
     public ICourtRepository Courts { get; } = new CourtRepository(context);
