@@ -33,12 +33,23 @@ public class PricingRepository(SportHubDbContext context) : IPricingRepository
             .ThenByDescending(item => item.Id)
             .FirstOrDefaultAsync();
 
-        if (policy is null) return new Dictionary<int, decimal>();
+        if (policy is null)
+        {
+            var fallbackSlots = await context.TimeSlots
+                .AsNoTracking()
+                .Select(slot => slot.Id)
+                .ToListAsync();
+            return fallbackSlots.ToDictionary(slotId => slotId, _ => 100_000m);
+        }
 
         var isWeekend = playDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
         var weekendMultiplier = isWeekend ? 1m + policy.WeekendSurchargePercent / 100m : 1m;
-        return policy.PriceRuleDetails.ToDictionary(
+        var configuredPrices = policy.PriceRuleDetails.ToDictionary(
             rule => rule.TimeSlotId,
             rule => decimal.Round(rule.HourlyRate * weekendMultiplier, 2, MidpointRounding.AwayFromZero));
+        var slotIds = await context.TimeSlots.AsNoTracking().Select(slot => slot.Id).ToListAsync();
+        return slotIds.ToDictionary(
+            slotId => slotId,
+            slotId => configuredPrices.GetValueOrDefault(slotId, 100_000m));
     }
 }
