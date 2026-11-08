@@ -3,8 +3,12 @@ import type { FormEvent } from 'react';
 import toast from 'react-hot-toast';
 import { CalendarDays, LoaderCircle, MapPin, Trophy } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { bookingApi, bookingCatalog } from '../../api/bookingApi';
+import { bookingApi } from '../../api/bookingApi';
 import type { Booking, CourtAvailability, SlotAvailability } from '../../api/bookingApi';
+import { facilityApi } from '../../api/facilityApi';
+import type { Facility, Sport } from '../../api/facilityModels';
+import { promotionApi } from '../../api/promotionApi';
+import type { UserVoucher } from '../../api/promotionApi';
 import { getErrorMessage } from '../../api/errors';
 import CourtBookingCart from '../../components/booking/CourtBookingCart';
 import CourtTimeGrid from '../../components/CourtTimeGrid';
@@ -27,6 +31,7 @@ const getVietnamDateTime = (timestamp: number) => {
     if (!value) throw new Error(`Missing ${name} in Vietnam date/time formatter.`);
     return value;
   };
+
   return {
     date: `${part('year')}-${part('month')}-${part('day')}`,
     time: `${part('hour')}:${part('minute')}:${part('second')}`,
@@ -54,18 +59,11 @@ const isContiguous = (slots: SlotAvailability[]) =>
 export default function BookingPage() {
   const { search } = useLocation();
   const filters = new URLSearchParams(search);
-  const [facilityId, setFacilityId] = useState<number>(() => {
-    const requestedId = Number(filters.get('facilityId'));
-    return bookingCatalog.facilities.some((facility) => facility.id === requestedId)
-      ? requestedId
-      : bookingCatalog.facilities[0].id;
-  });
-  const [sportId, setSportId] = useState<number>(() => {
-    const requestedId = Number(filters.get('sportId'));
-    return bookingCatalog.sports.some((sport) => sport.id === requestedId)
-      ? requestedId
-      : bookingCatalog.sports[0].id;
-  });
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [facilityId, setFacilityId] = useState<number>(Number(filters.get('facilityId')) || 0);
+  const [sportId, setSportId] = useState<number>(Number(filters.get('sportId')) || 0);
   const [playDate, setPlayDate] = useState(() => {
     const requestedDate = filters.get('date');
     return isValidDate(requestedDate) ? requestedDate : tomorrow();
@@ -79,9 +77,31 @@ export default function BookingPage() {
   const [paying, setPaying] = useState(false);
   const [cancellingHold, setCancellingHold] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [wallet, setWallet] = useState<UserVoucher[]>([]);
+  const [selectedVoucherId, setSelectedVoucherId] = useState<number | null>(null);
+  const [redeemingVoucher, setRedeemingVoucher] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => getVietnamDateTime(Date.now()));
   const requestId = useRef(0);
   const holdingRef = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([facilityApi.getFacilities(), facilityApi.getSports()])
+      .then(([facilityRows, sportRows]) => {
+        if (!active) return;
+        setFacilities(facilityRows);
+        setSports(sportRows);
+        setFacilityId((current) => facilityRows.some((item) => item.id === current) ? current : facilityRows[0]?.id ?? 0);
+        setSportId((current) => sportRows.some((item) => item.id === current) ? current : sportRows[0]?.id ?? 0);
+      })
+      .catch((error) => toast.error(getErrorMessage(error)))
+      .finally(() => { if (active) setCatalogLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    void promotionApi.getWallet().then(setWallet).catch(() => setWallet([]));
+  }, []);
 
   const isSlotInPast = useCallback((slot: SlotAvailability) => {
     return slotHasStarted(playDate, slot, currentTime);
@@ -259,6 +279,7 @@ export default function BookingPage() {
         selectedSlots.map((slot) => slot.timeSlotId)
       );
       setHold(booking);
+      setSelectedVoucherId(null);
       clearSelection();
       await loadAvailability();
     } catch (error) {
@@ -268,6 +289,27 @@ export default function BookingPage() {
     } finally {
       holdingRef.current = false;
       setHolding(false);
+    }
+  };
+
+  const redeemVoucher = async () => {
+    if (!hold || !selectedVoucherId || redeemingVoucher) return;
+    setRedeemingVoucher(true);
+    try {
+      const discount = await promotionApi.redeem({
+        userVoucherId: selectedVoucherId,
+        bookingId: hold.id,
+      });
+      setHold((current) => current
+        ? { ...current, discountAmount: discount.discountAmount, finalAmount: discount.finalAmount }
+        : current);
+      setWallet((current) => current.map((voucher) =>
+        voucher.id === selectedVoucherId ? { ...voucher, isUsed: true, usedAt: new Date().toISOString() } : voucher));
+      toast.success(`Đã giảm ${discount.discountAmount.toLocaleString('vi-VN')} đ.`);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setRedeemingVoucher(false);
     }
   };
 
@@ -318,7 +360,7 @@ export default function BookingPage() {
         <label className="space-y-1.5">
           <span className="flex items-center gap-2 text-sm font-medium text-gray-700"><MapPin size={16} /> Cơ sở</span>
           <select value={facilityId} onChange={(event) => { clearSelection(); setFacilityId(Number(event.target.value)); }} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5">
-            {bookingCatalog.facilities.map((facility) => (
+            {facilities.map((facility) => (
               <option key={facility.id} value={facility.id}>{facility.name}</option>
             ))}
           </select>
@@ -326,8 +368,8 @@ export default function BookingPage() {
         <label className="space-y-1.5">
           <span className="flex items-center gap-2 text-sm font-medium text-gray-700"><Trophy size={16} /> Môn thể thao</span>
           <select value={sportId} onChange={(event) => { clearSelection(); setSportId(Number(event.target.value)); }} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5">
-            {bookingCatalog.sports.map((sport) => (
-              <option key={sport.id} value={sport.id}>{sport.name}</option>
+            {sports.map((sport) => (
+              <option key={sport.id} value={sport.id}>{sport.sportName}</option>
             ))}
           </select>
         </label>
@@ -335,7 +377,7 @@ export default function BookingPage() {
           <span className="flex items-center gap-2 text-sm font-medium text-gray-700"><CalendarDays size={16} /> Ngày chơi</span>
           <input type="date" min={today()} required value={playDate} onChange={(event) => { clearSelection(); setPlayDate(event.target.value); }} className="w-full rounded-xl border border-gray-200 px-3 py-2.5" />
         </label>
-        <button type="submit" disabled={loading} className="self-end rounded-xl bg-red-700 px-4 py-2.5 font-semibold text-white hover:bg-red-800 disabled:opacity-60">
+        <button type="submit" disabled={loading || catalogLoading || !facilityId || !sportId} className="self-end rounded-xl bg-red-700 px-4 py-2.5 font-semibold text-white hover:bg-red-800 disabled:opacity-60">
           {loading ? <LoaderCircle className="mx-auto animate-spin" size={20} /> : 'Xem lịch sân'}
         </button>
       </form>
@@ -411,12 +453,31 @@ export default function BookingPage() {
               <p className="text-sm text-gray-600">Thanh toán an toàn qua VNPay Sandbox</p>
               <p className="mt-1 font-mono font-bold">{hold.bookingCode}</p>
             </div>
-            <p className="text-center text-lg font-bold">{hold.totalAmount.toLocaleString('vi-VN')} đ</p>
+            {wallet.some((voucher) => !voucher.isUsed) && (
+              <div className="space-y-2 rounded-xl border border-red-100 bg-red-50/50 p-3">
+                <label className="block text-sm font-medium text-gray-700" htmlFor="booking-voucher">Voucher</label>
+                <div className="flex gap-2">
+                  <select id="booking-voucher" value={selectedVoucherId ?? ''} onChange={(event) => setSelectedVoucherId(Number(event.target.value) || null)} className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
+                    <option value="">Chọn voucher</option>
+                    {wallet.filter((voucher) => !voucher.isUsed).map((voucher) => (
+                      <option key={voucher.id} value={voucher.id}>{voucher.promoCode} - {voucher.title}</option>
+                    ))}
+                  </select>
+                  <button type="button" onClick={() => void redeemVoucher()} disabled={!selectedVoucherId || redeemingVoucher} className="rounded-lg bg-red-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                    {redeemingVoucher ? 'Đang áp dụng...' : 'Áp dụng'}
+                  </button>
+                </div>
+              </div>
+            )}
+            {(hold.discountAmount ?? 0) > 0 && (
+              <p className="text-right text-sm text-green-700">Đã giảm {(hold.discountAmount ?? 0).toLocaleString('vi-VN')} đ</p>
+            )}
+            <p className="text-center text-lg font-bold">{(hold.finalAmount ?? hold.totalAmount).toLocaleString('vi-VN')} đ</p>
             <div className="flex justify-end gap-3">
               <button type="button" disabled={paying || cancellingHold} onClick={() => void cancelHold()} className="rounded-xl border border-red-200 px-4 py-2 text-red-700 disabled:opacity-60">
                 {cancellingHold ? 'Đang hủy...' : 'Hủy giữ chỗ'}
               </button>
-              <button type="button" disabled={paying || cancellingHold || !hold.holdExpiresAt} onClick={() => void payWithVnPay()} className="rounded-xl bg-red-700 px-4 py-2 font-semibold text-white disabled:opacity-60">
+              <button type="button" disabled={paying || cancellingHold || redeemingVoucher || !hold.holdExpiresAt} onClick={() => void payWithVnPay()} className="rounded-xl bg-red-700 px-4 py-2 font-semibold text-white disabled:opacity-60">
                 {paying ? 'Đang chuyển đến VNPay...' : 'Thanh toán qua VNPay'}
               </button>
             </div>

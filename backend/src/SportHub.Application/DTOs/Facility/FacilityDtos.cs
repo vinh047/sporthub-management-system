@@ -98,3 +98,13 @@ public record PriceRuleDetailDto(
     decimal HourlyRate,
     bool IsPeakHour
 );
+
+public record SlotPriceBreakdownResponse(
+    int CourtId,
+    int TimeSlotId,
+    decimal BasePrice,
+    decimal PeakMultiplier,
+    decimal WeekendSurcharge,
+    decimal FinalPrice,
+    bool IsFallback
+);
