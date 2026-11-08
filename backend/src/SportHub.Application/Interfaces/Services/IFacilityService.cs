@@ -9,4 +9,9 @@ public interface IFacilityService
     Task<IEnumerable<FacilityResponse>> GetAllFacilitiesAsync(bool activeOnly = true);
     Task<FacilityDetailResponse> GetFacilityDetailAsync(int id);
     Task SetFacilityActiveAsync(int id, bool isActive);
+    Task<IEnumerable<SportResponse>> GetActiveSportsAsync();
+    Task<IEnumerable<SportResponse>> GetSportsAsync();
+    Task<SportResponse> CreateSportAsync(SaveSportRequest request);
+    Task<SportResponse> UpdateSportAsync(int id, SaveSportRequest request);
+    Task DeleteSportAsync(int id);
 }

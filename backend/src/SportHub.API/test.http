@@ -1,0 +1,215 @@
+@baseUrl = http://localhost:5000
+@adminToken = PASTE_ADMIN_ACCESS_TOKEN_HERE
+@playerToken = PASTE_PLAYER_ACCESS_TOKEN_HERE
+@facilityId = 1
+@sportId = 1
+@courtId = 1
+@timeSlotId = 1
+@promotionId = 1
+@userVoucherId = 1
+@bookingId = 1
+@testDate = 2026-11-10
+
+### Health check
+GET {{baseUrl}}/api/health
+Accept: application/json
+
+### Login - copy the access token from the response into the variables above
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "phoneNumber": "0900000000",
+  "password": "Admin@123"
+}
+
+### Login as the sample Player
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "phoneNumber": "0900000002",
+  "password": "Player@123"
+}
+
+### Current account
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Active facilities
+GET {{baseUrl}}/api/facility
+Accept: application/json
+
+### Sports catalog
+GET {{baseUrl}}/api/sports
+Accept: application/json
+
+### Manage all sports - Admin only
+GET {{baseUrl}}/api/sports/manage
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Create a sport - Admin only
+POST {{baseUrl}}/api/sports
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "sportCode": "BASKETBALL",
+  "sportName": "Bóng rổ",
+  "isActive": true
+}
+
+### Update a sport - Admin only
+PUT {{baseUrl}}/api/sports/{{sportId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "sportCode": "BADMINTON",
+  "sportName": "Cầu lông",
+  "isActive": true
+}
+
+### Deactivate a sport - soft delete, Admin only
+DELETE {{baseUrl}}/api/sports/{{sportId}}
+Authorization: Bearer {{adminToken}}
+Accept: application/json
+
+### Facility details
+GET {{baseUrl}}/api/facility/{{facilityId}}
+Accept: application/json
+
+### Create facility
+POST {{baseUrl}}/api/facility
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "SportHub API Test",
+  "address": "123 Duong Test, Ho Chi Minh City",
+  "hotline": "0901234567",
+  "openTime": "06:00:00",
+  "closeTime": "23:00:00"
+}
+
+### Create a court
+POST {{baseUrl}}/api/court
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "facilityId": {{facilityId}},
+  "sportId": {{sportId}},
+  "courtName": "Court API Test",
+  "courtType": "Indoor"
+}
+
+### Create multiple courts
+POST {{baseUrl}}/api/court/batch
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "facilityId": {{facilityId}},
+  "sportId": {{sportId}},
+  "namePrefix": "Court Batch Test",
+  "count": 3,
+  "courtType": "Indoor"
+}
+
+### Upsert pricing policy
+POST {{baseUrl}}/api/pricing/policies
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "facilityId": {{facilityId}},
+  "sportId": {{sportId}},
+  "basePrice": 100000,
+  "weekendSurchargePercent": 20,
+  "effectiveFrom": "{{testDate}}",
+  "rules": [
+    {
+      "timeSlotId": {{timeSlotId}},
+      "hourlyRate": 150000,
+      "isPeakHour": true
+    }
+  ]
+}
+
+### Price for a slot
+GET {{baseUrl}}/api/pricing/slot?courtId={{courtId}}&playDate={{testDate}}&timeSlotId={{timeSlotId}}
+Accept: application/json
+
+### Court availability
+GET {{baseUrl}}/api/court/availability?facilityId={{facilityId}}&sportId={{sportId}}&date={{testDate}}
+Accept: application/json
+
+### Lock court for maintenance
+POST {{baseUrl}}/api/court/maintenance
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "courtId": {{courtId}},
+  "maintenanceDate": "{{testDate}}",
+  "startTime": "10:00:00",
+  "endTime": "12:00:00",
+  "reason": "Scheduled surface maintenance"
+}
+
+### Create promotion
+POST {{baseUrl}}/api/promotion
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "promoCode": "APITEST20",
+  "title": "API test discount",
+  "discountType": "Percentage",
+  "discountValue": 20,
+  "maxDiscountAmount": 50000,
+  "minOrderAmount": 100000,
+  "usageLimitTotal": 100,
+  "usageLimitPerUser": 1,
+  "startDate": "2026-01-01T00:00:00Z",
+  "endDate": "2027-12-31T23:59:59Z",
+  "isOffPeakOnly": false
+}
+
+### Active promotions
+GET {{baseUrl}}/api/promotion/active
+Accept: application/json
+
+### Validate promotion - use Player token
+POST {{baseUrl}}/api/promotion/validate
+Authorization: Bearer {{playerToken}}
+Content-Type: application/json
+
+{
+  "promoCode": "APITEST20",
+  "orderAmount": 200000,
+  "isOffPeak": true
+}
+
+### Player voucher wallet
+GET {{baseUrl}}/api/promotion/wallet
+Authorization: Bearer {{playerToken}}
+Accept: application/json
+
+### Claim a promotion - replace promotionId with a real ID
+POST {{baseUrl}}/api/promotion/{{promotionId}}/claim
+Authorization: Bearer {{playerToken}}
+Accept: application/json
+
+### Redeem voucher - requires a Held booking owned by this Player
+POST {{baseUrl}}/api/promotion/redeem
+Authorization: Bearer {{playerToken}}
+Content-Type: application/json
+
+{
+  "userVoucherId": {{userVoucherId}},
+  "bookingId": {{bookingId}}
+}

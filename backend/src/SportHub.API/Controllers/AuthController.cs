@@ -25,6 +25,12 @@ public class AuthController(IAuthService authService) : ApiControllerBase
         return Ok(BaseResponse<AuthResponse>.Ok(result));
     }
 
+    /// <summary>Thông tin người đang đăng nhập (kèm hồ sơ người chơi nếu có)</summary>
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<BaseResponse<MeResponse>>> Me()
+        => Ok(BaseResponse<MeResponse>.Ok(await authService.GetMeAsync(RequiredUserId)));
+
     /// <summary>Cập nhật hồ sơ thể thao (môn + trình độ)</summary>
     [HttpPut("sport-profile")]
     [Authorize]

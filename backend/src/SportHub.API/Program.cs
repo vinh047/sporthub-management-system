@@ -4,6 +4,7 @@ using SportHub.API.Hubs;
 using SportHub.API.Middleware;
 using SportHub.Application;
 using SportHub.Infrastructure;
+using SportHub.Infrastructure.Persistence.Seed;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,7 @@ builder.Services.AddSwaggerDocumentation();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddSignalR();
+builder.Services.AddApiHealthChecks();
 
 // Clean Architecture Layers
 builder.Services.AddApplicationServices();
@@ -31,6 +33,10 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // ── Build App ────────────────────────────────────────────────
 var app = builder.Build();
+
+// Dữ liệu nền cho Development: vai trò, tài khoản Admin/Staff mẫu
+if (app.Environment.IsDevelopment())
+    await app.Services.SeedDevelopmentDataAsync();
 
 // Global Exception Handler
 app.UseMiddleware<GlobalExceptionHandler>();

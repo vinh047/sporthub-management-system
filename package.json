@@ -1,0 +1,30 @@
+{
+  "name": "sporthub-management-system",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names backend,frontend --prefix-colors blue,green \"pnpm backend:dev\" \"pnpm frontend:dev\"",
+    "dev:backend": "dotnet run --project backend/src/SportHub.API/SportHub.API.csproj",
+    "build:backend": "dotnet build backend/SportHub.slnx",
+    "test:backend": "dotnet test backend/tests/SportHub.Tests/SportHub.Tests.csproj",
+    "migrate": "dotnet ef database update --project backend/src/SportHub.Infrastructure --startup-project backend/src/SportHub.API",
+    "dev:frontend": "pnpm --dir frontend dev",
+    "build:frontend": "pnpm --dir frontend build",
+    "lint:frontend": "pnpm --dir frontend lint",
+    "preview:frontend": "pnpm --dir frontend preview",
+    "build": "pnpm backend:build && pnpm frontend:build",
+    "lint": "pnpm frontend:lint",
+    "db:up": "docker compose up -d sqlserver",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f sqlserver",
+    "setup": "pnpm install && pnpm db:up"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

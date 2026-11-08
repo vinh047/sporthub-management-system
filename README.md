@@ -28,6 +28,7 @@ Hệ thống quản lý chuỗi sân thể thao đa chi nhánh, bao gồm đặt
 - [**.NET 10 SDK**](https://dotnet.microsoft.com/download) → Kiểm tra: `dotnet --version`
 - [**Node.js >= 20**](https://nodejs.org/) → Kiểm tra: `node --version`
 - [**SQL Server LocalDB**](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb) (Có sẵn khi cài Visual Studio) hoặc **SQL Server Express**
+- [**Docker Desktop**](https://www.docker.com/products/docker-desktop/) (nếu chạy SQL Server bằng Docker Compose)
 - [**EF Core CLI**](https://learn.microsoft.com/en-us/ef/core/cli/dotnet) → Cài bằng lệnh:
   ```bash
   dotnet tool install --global dotnet-ef
@@ -44,6 +45,40 @@ cd sporthub-management-system
 ```
 
 ### Bước 2: Cấu hình Backend
+
+#### Tùy chọn A: Chạy SQL Server bằng Docker Compose
+
+Tạo file `.env` từ `.env.example`, sau đó khởi động SQL Server:
+
+```bash
+copy .env.example .env
+docker compose up -d sqlserver
+docker compose ps
+```
+
+Container sử dụng SQL Authentication với tài khoản `sa`, database `SportHubDb`
+được tạo khi chạy migration. Khi chạy API trên máy, đặt connection string cho
+PowerShell như sau:
+
+```powershell
+$env:ConnectionStrings__DefaultConnection = "Server=localhost,1433;Database=SportHubDb;User Id=sa;Password=SportHub_DevPassword_2026!;TrustServerCertificate=True;MultipleActiveResultSets=true"
+```
+
+Nếu đã đổi `MSSQL_SA_PASSWORD` trong `.env`, dùng đúng mật khẩu đó trong
+connection string. Sau đó tiếp tục chạy migration và backend ở các bước bên dưới.
+
+Dừng SQL Server khi không dùng:
+
+```bash
+docker compose down
+```
+
+Volume `sporthub-sqlserver-data` được giữ lại khi dừng container. Chỉ thêm
+`-v` khi muốn xóa toàn bộ dữ liệu local:
+
+```bash
+docker compose down -v
+```
 
 **2.1. Cài đặt JWT Secret (BẮT BUỘC)**
 
@@ -83,7 +118,8 @@ dotnet ef migrations add InitialCreate --project src/SportHub.Infrastructure --s
 dotnet ef database update --project src/SportHub.Infrastructure --startup-project src/SportHub.API
 ```
 
-> Sau khi chạy, database `SportHubDb` sẽ được tạo tự động trên LocalDB của máy bạn.
+> Sau khi chạy, database `SportHubDb` sẽ được tạo tự động trên SQL Server đã cấu hình
+> (LocalDB hoặc Docker Compose).
 
 **2.3. Chạy Backend**
 
@@ -104,16 +140,31 @@ Khi thấy dòng `Now listening on: http://localhost:5000` là Backend đã ho�
 ### Bước 3: Cài đặt & Chạy Frontend
 
 ```bash
-cd frontend
-
-# Cài đặt thư viện (chỉ cần chạy lần đầu)
-npm install
+# Từ thư mục gốc dự án, cài đặt toàn bộ workspace
+pnpm install
 
 # Chạy Development Server
-npm run dev
+pnpm dev:frontend
 ```
 
 Truy cập: **`http://localhost:5173`**
+
+### Các lệnh phát triển nhanh
+
+Các lệnh sau được khai báo trong `package.json` ở thư mục gốc:
+
+| Lệnh | Mục đích |
+|---|---|
+| `pnpm setup` | Cài dependencies và khởi động SQL Server Docker |
+| `pnpm dev` | Chạy đồng thời backend và frontend |
+| `pnpm dev:backend` | Chỉ chạy backend .NET |
+| `pnpm dev:frontend` | Chỉ chạy frontend Vite |
+| `pnpm build` | Build backend và frontend |
+| `pnpm lint` | Lint frontend |
+| `pnpm test:backend` | Chạy test backend |
+| `pnpm migrate` | Áp dụng EF Core migrations |
+| `pnpm db:up` / `pnpm db:down` | Bật / tắt SQL Server Docker |
+| `pnpm db:logs` | Xem log SQL Server |
 
 ---
 

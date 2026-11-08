@@ -8,6 +8,6 @@ namespace SportHub.Application.Interfaces.Services;
 /// </summary>
 public interface IJwtTokenProvider
 {
-    (string AccessToken, DateTime ExpiresAt) GenerateToken(User user, string role);
+    (string AccessToken, DateTime ExpiresAt) GenerateToken(User user, string role, int? facilityId = null);
     System.Security.Claims.ClaimsPrincipal? ValidateToken(string token);
 }

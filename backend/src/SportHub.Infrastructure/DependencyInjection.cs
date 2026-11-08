@@ -25,13 +25,17 @@ public static class DependencyInjection
         // Unit of Work & Repositories
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IFacilityRepository, FacilityRepository>();
+        services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<ICourtRepository, CourtRepository>();
         services.AddScoped<ISocialSessionRepository, SocialSessionRepository>();
         services.AddScoped<ITournamentRepository, TournamentRepository>();
+        services.AddScoped<ICheckInRepository, CheckInRepository>();
 
-        // JWT
+        // JWT & mật khẩu
         services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();
+        services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 
         // Background Jobs
         services.AddHostedService<HoldSlotExpiryJob>();

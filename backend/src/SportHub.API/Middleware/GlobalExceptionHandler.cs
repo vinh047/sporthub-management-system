@@ -43,6 +43,10 @@ public class GlobalExceptionHandler(RequestDelegate next, ILogger<GlobalExceptio
                 HttpStatusCode.Conflict,
                 BaseResponse<object>.Fail(cfe.Message)),
 
+            UnauthorizedException ue => (
+                HttpStatusCode.Unauthorized,
+                BaseResponse<object>.Fail(ue.Message)),
+
             ForbiddenException ffe => (
                 HttpStatusCode.Forbidden,
                 BaseResponse<object>.Fail(ffe.Message)),

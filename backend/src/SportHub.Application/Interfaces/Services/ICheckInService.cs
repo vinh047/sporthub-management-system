@@ -1,8 +1,10 @@
-using SportHub.Application.DTOs.Booking;
+using SportHub.Application.DTOs.CheckIn;
 
 namespace SportHub.Application.Interfaces.Services;
 
 public interface ICheckInService
 {
-    Task CheckInAsync(CheckInRequest request, int staffUserId);
+    Task<List<CheckInItem>> LookupAsync(string keyword, int staffUserId, bool isAdmin);
+    Task<List<CheckInItem>> GetTodayAsync(int facilityId, int staffUserId, bool isAdmin);
+    Task CheckInAsync(CheckInRequest request, int staffUserId, bool isAdmin);
 }

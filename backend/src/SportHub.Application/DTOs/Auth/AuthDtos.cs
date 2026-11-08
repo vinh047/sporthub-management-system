@@ -30,6 +30,25 @@ public record AuthResponse(
     string FullName,
     string PhoneNumber,
     string Role,
+    int? FacilityId,        // Cơ sở của Staff, null với Player/Admin
     string AccessToken,
     DateTime ExpiresAt
+);
+
+public record MeResponse(
+    int UserId,
+    string FullName,
+    string PhoneNumber,
+    string Role,
+    int? FacilityId,
+    PlayerSummary? Player   // null nếu không phải người chơi
+);
+
+public record PlayerSummary(
+    int ReputationScore,
+    decimal SkillRating,
+    string SkillLevel,
+    int LoyaltyPoints,
+    string Tier,
+    int TotalMatchesPlayed
 );
