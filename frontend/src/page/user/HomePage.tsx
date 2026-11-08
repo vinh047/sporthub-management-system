@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowRight, CalendarDays, Clock, Crown, Mail, MapPin, Menu, Phone, Search, Trophy, Users, X } from 'lucide-react';
 import Brand from '../../components/Brand';
 import SystemStatus from '../../components/SystemStatus';
+import { bookingCatalog } from '../../api/bookingApi';
 import { useAuthStore } from '../../store/authStore';
 import { homePathFor } from '../../utils/roleHome';
 import { notifyComingSoon } from '../../utils/comingSoon';
@@ -14,8 +15,8 @@ import type { FeatureKey } from '../../utils/comingSoon';
 const CONTACT = { name: 'Hệ thống đặt sân SportHub', hotline: '0900 000 000', email: 'lienhe@sporthub.vn' };
 
 // TODO (TV3): lấy danh sách môn và cơ sở từ GET /api/sports, GET /api/facility
-const SPORTS = ['Cầu lông', 'Pickleball', 'Bóng đá mini', 'Tennis'];
-const FACILITIES = ['Tất cả cơ sở'];
+const SPORTS = bookingCatalog.sports;
+const FACILITIES = bookingCatalog.facilities;
 
 const TODAY = new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
 const CURRENT_YEAR = new Date().getFullYear();
@@ -76,11 +77,35 @@ function TopBar() {
   );
 }
 
+function usePlayerNavigation() {
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuthStore();
+
+  return (path: string) => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: path } } });
+      return;
+    }
+
+    if (user?.role === 'PLAYER') {
+      navigate(path);
+      return;
+    }
+
+    if (user) navigate(homePathFor(user.role));
+  };
+}
+
 function NavBar() {
   const [open, setOpen] = useState(false);
+  const navigateToPlayer = usePlayerNavigation();
 
   const handleNav = (item: (typeof NAV)[number]) => {
     setOpen(false);
+    if (item.feature === 'booking' || item.feature === 'schedule' || item.feature === 'facilities') {
+      navigateToPlayer(item.feature === 'schedule' ? '/player/my-bookings' : '/player/booking');
+      return;
+    }
     if (item.feature) notifyComingSoon(item.feature);
   };
 
@@ -106,7 +131,7 @@ function NavBar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => notifyComingSoon('booking')} className="btn btn-primary px-5 py-2.5 font-semibold shadow-md">
+          <button type="button" onClick={() => navigateToPlayer('/player/booking')} className="btn btn-primary px-5 py-2.5 font-semibold shadow-md">
             Đặt sân ngay
           </button>
           <button
@@ -138,14 +163,15 @@ function NavBar() {
 }
 
 function QuickSearch() {
-  const [sport, setSport] = useState('');
-  const [facility, setFacility] = useState(FACILITIES[0]);
+  const navigateToPlayer = usePlayerNavigation();
+  const [sportId, setSportId] = useState(String(SPORTS[0].id));
+  const [facilityId, setFacilityId] = useState(String(FACILITIES[0].id));
   const [date, setDate] = useState(TODAY);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    // TODO (TV1): chuyển sang trang lịch sân với sport, facility, date
-    notifyComingSoon('schedule');
+    const filters = new URLSearchParams({ date, sportId, facilityId });
+    navigateToPlayer(`/player/booking?${filters.toString()}`);
   };
 
   const fieldClass = 'w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-600';
@@ -158,15 +184,14 @@ function QuickSearch() {
       </div>
       <label className="block space-y-1.5">
         <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Môn thể thao</span>
-        <select value={sport} onChange={(e) => setSport(e.target.value)} className={fieldClass}>
-          <option value="">Tất cả môn</option>
-          {SPORTS.map((s) => <option key={s} value={s}>{s}</option>)}
+        <select value={sportId} onChange={(e) => setSportId(e.target.value)} className={fieldClass}>
+          {SPORTS.map((sport) => <option key={sport.id} value={sport.id}>{sport.name}</option>)}
         </select>
       </label>
       <label className="block space-y-1.5">
         <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Cơ sở</span>
-        <select value={facility} onChange={(e) => setFacility(e.target.value)} className={fieldClass}>
-          {FACILITIES.map((f) => <option key={f} value={f}>{f}</option>)}
+        <select value={facilityId} onChange={(e) => setFacilityId(e.target.value)} className={fieldClass}>
+          {FACILITIES.map((facility) => <option key={facility.id} value={facility.id}>{facility.name}</option>)}
         </select>
       </label>
       <label className="block space-y-1.5">
@@ -181,6 +206,8 @@ function QuickSearch() {
 }
 
 function Hero() {
+  const navigateToPlayer = usePlayerNavigation();
+
   return (
     <section className="relative overflow-hidden text-white bg-[radial-gradient(ellipse_at_top_left,#6b1515_0%,#3d0b0b_45%,#250606_100%)]">
       <div className="absolute -right-32 -top-32 w-[32rem] h-[32rem] rounded-full bg-red-700/20 blur-3xl" />
@@ -195,10 +222,10 @@ function Hero() {
             theo thời gian thực, giữ chỗ và thanh toán ngay — không cần gọi điện.
           </p>
           <div className="flex flex-wrap gap-4 mb-12">
-            <button type="button" onClick={() => notifyComingSoon('schedule')} className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-red-700 hover:bg-red-800 font-semibold shadow-lg">
+            <button type="button" onClick={() => navigateToPlayer('/player/booking')} className="flex items-center gap-2 px-7 py-3.5 rounded-xl bg-red-700 hover:bg-red-800 font-semibold shadow-lg">
               <Search size={18} /> Tìm sân trống
             </button>
-            <button type="button" onClick={() => notifyComingSoon('facilities')} className="px-7 py-3.5 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 font-semibold">
+            <button type="button" onClick={() => navigateToPlayer('/player/booking')} className="px-7 py-3.5 rounded-xl border border-white/30 bg-white/10 hover:bg-white/20 font-semibold">
               Xem tất cả sân
             </button>
           </div>
@@ -225,6 +252,8 @@ function Hero() {
 
 /** Trang chủ công khai (chưa cần đăng nhập) */
 export default function HomePage() {
+  const navigateToPlayer = usePlayerNavigation();
+
   return (
     <div id="top" className="min-h-screen bg-background text-text">
       <TopBar />
@@ -241,7 +270,7 @@ export default function HomePage() {
                 <span className={`grid h-12 w-12 place-items-center rounded-xl mb-4 ${s.tint}`}><s.icon size={22} /></span>
                 <h3 className="font-semibold mb-2">{s.title}</h3>
                 <p className="text-sm text-muted flex-1">{s.description}</p>
-                <button type="button" onClick={() => notifyComingSoon(s.feature)} className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary text-left hover:gap-2 transition-all">
+                <button type="button" onClick={() => s.feature === 'booking' ? navigateToPlayer('/player/booking') : notifyComingSoon(s.feature)} className="mt-4 flex items-center gap-1 text-sm font-semibold text-primary text-left hover:gap-2 transition-all">
                   Xem chi tiết <ArrowRight size={16} />
                 </button>
               </div>
