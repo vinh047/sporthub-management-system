@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.SignalR;
-using System.Globalization;
 
 namespace SportHub.API.Hubs;
 
@@ -10,22 +9,14 @@ namespace SportHub.API.Hubs;
 public class CourtStatusHub : Hub
 {
     /// <summary>Join group để nhận update của 1 cơ sở cụ thể</summary>
-    public async Task JoinFacilityGroup(int facilityId, string? date = null)
+    public async Task JoinFacilityGroup(int facilityId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, GetGroupName(facilityId, date));
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"facility-{facilityId}");
     }
 
     /// <summary>Rời group của cơ sở</summary>
-    public async Task LeaveFacilityGroup(int facilityId, string? date = null)
+    public async Task LeaveFacilityGroup(int facilityId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GetGroupName(facilityId, date));
-    }
-
-    private static string GetGroupName(int facilityId, string? date)
-    {
-        if (date is null) return $"facility-{facilityId}";
-        if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
-            throw new HubException("Ngày không hợp lệ. Hãy dùng định dạng yyyy-MM-dd.");
-        return $"facility-{facilityId}-{date}";
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"facility-{facilityId}");
     }
 }

@@ -10,8 +10,8 @@ import type { FeatureKey } from '../utils/comingSoon';
 // Có "feature" = trang chưa làm: bấm sẽ hiện người phụ trách. Làm xong thì xóa "feature" và thêm route.
 const MENU: { to: string; label: string; icon: LucideIcon; feature?: FeatureKey }[] = [
   { to: '/player', label: 'Trang chủ', icon: House },
-  { to: '/player/booking', label: 'Đặt sân', icon: CalendarDays },
-  { to: '/player/my-bookings', label: 'Đơn của tôi', icon: ReceiptText },
+  { to: '/player/booking', label: 'Đặt sân', icon: CalendarDays, feature: 'booking' },
+  { to: '/player/my-bookings', label: 'Đơn của tôi', icon: ReceiptText, feature: 'myBookings' },
   { to: '/player/social', label: 'Social', icon: Users, feature: 'social' },
   { to: '/player/tournaments', label: 'Giải đấu', icon: Trophy, feature: 'tournaments' },
   { to: '/player/vouchers', label: 'Ưu đãi', icon: TicketPercent },

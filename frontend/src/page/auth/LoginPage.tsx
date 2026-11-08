@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -14,33 +14,20 @@ import { saveSession } from '../../utils/session';
 // Tài khoản mẫu do DataSeeder tạo (chỉ hiện khi chạy dev)
 const DEMO_ACCOUNTS = [
   { role: 'Quản trị', phone: '0900000000', password: 'Admin@123' },
-  { role: 'Nhân viên', phone: '0900000002', password: 'Staff@123' },
-  { role: 'Người chơi', phone: '0922222201', password: 'Test@1234' },
+  { role: 'Nhân viên', phone: '0900000001', password: 'Staff@123' },
+  { role: 'Người chơi', phone: '0900000002', password: 'Player@123' },
 ];
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useAuthStore();
-  const requestedPath = (location.state as {
-    from?: { pathname?: string; search?: string; hash?: string };
-  } | null)?.from;
-  const playerReturnPath = requestedPath?.pathname?.startsWith('/player/')
-    ? `${requestedPath.pathname}${requestedPath.search ?? ''}${requestedPath.hash ?? ''}`
-    : requestedPath?.pathname === '/vouchers'
-      ? `${requestedPath.pathname}${requestedPath.search ?? ''}${requestedPath.hash ?? ''}`
-    : null;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Đã đăng nhập thì vào thẳng trang của mình
-  if (isAuthenticated && user) {
-    const destination = user.role === 'PLAYER' && playerReturnPath
-      ? playerReturnPath
-      : homePathFor(user.role);
-    return <Navigate to={destination} replace />;
-  }
+  if (isAuthenticated && user) return <Navigate to={homePathFor(user.role)} replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -49,8 +36,16 @@ export default function LoginPage() {
       const res = await authApi.login({ phoneNumber: phoneNumber.trim(), password });
       if (!res.data) throw new Error('Không nhận được dữ liệu đăng nhập.');
       toast.success(`Xin chào ${res.data.fullName}!`);
-      const defaultPath = saveSession(res.data);
-      navigate(res.data.role === 'PLAYER' && playerReturnPath ? playerReturnPath : defaultPath, { replace: true });
+      const homePath = saveSession(res.data);
+      const returnPath = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
+      const canReturnToPromotions = res.data.role === 'PLAYER' &&
+        (returnPath?.pathname === '/vouchers' || returnPath?.pathname?.startsWith('/player/'));
+      navigate(
+        canReturnToPromotions && returnPath?.pathname
+          ? `${returnPath.pathname}${returnPath.search ?? ''}${returnPath.hash ?? ''}`
+          : homePath,
+        { replace: true },
+      );
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
