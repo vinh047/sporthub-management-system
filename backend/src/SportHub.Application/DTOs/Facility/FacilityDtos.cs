@@ -71,7 +71,8 @@ public record SlotAvailability(
     TimeOnly EndTime,
     bool IsAvailable,
     bool IsPeakHour,
-    decimal Price
+    decimal Price,
+    string Status = "Available"
 );
 
 public record LockCourtRequest(
