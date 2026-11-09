@@ -30,6 +30,21 @@ const statusLabel: Record<string, string> = {
   Past: 'Đã qua',
 };
 
+const DEFAULT_HEADER_SLOTS: SlotAvailability[] = Array.from({ length: 17 }, (_, index) => {
+  const startHour = 6 + index;
+  const endHour = startHour + 1;
+  const isPeakHour = startHour >= 17 && endHour <= 21;
+  return {
+    timeSlotId: index + 1,
+    startTime: `${String(startHour).padStart(2, '0')}:00:00`,
+    endTime: `${String(endHour).padStart(2, '0')}:00:00`,
+    isAvailable: true,
+    isPeakHour,
+    price: isPeakHour ? 120000 : 100000,
+    status: 'Available',
+  };
+});
+
 export default function CourtTimeGrid({
   courts,
   selectedCourtId,
@@ -38,7 +53,7 @@ export default function CourtTimeGrid({
   onToggleSlot,
   onDragSelect,
 }: CourtTimeGridProps) {
-  const slots = courts[0]?.slots ?? [];
+  const slots = courts[0]?.slots && courts[0].slots.length > 0 ? courts[0].slots : DEFAULT_HEADER_SLOTS;
   const dragStart = useRef<{ courtId: number; timeSlotId: number } | null>(null);
   const dragged = useRef(false);
   const suppressClick = useRef(false);

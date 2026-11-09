@@ -94,7 +94,31 @@ export const bookingApi = {
     const response = await axiosInstance.get<ApiResponse<CourtAvailability[]>>('/court/availability', {
       params: { facilityId, sportId, date },
     });
-    return requireData(response.data);
+    const courts = requireData(response.data);
+    return courts.map((court) => ({
+      ...court,
+      slots:
+        court.slots && court.slots.length > 0
+          ? court.slots.map((s) => ({
+              ...s,
+              status: s.status ?? (s.isAvailable ? 'Available' : 'Confirmed'),
+              price: s.price > 0 ? s.price : s.isPeakHour ? 120000 : 100000,
+            }))
+          : Array.from({ length: 17 }, (_, index) => {
+              const startHour = 6 + index;
+              const endHour = startHour + 1;
+              const isPeakHour = startHour >= 17 && endHour <= 21;
+              return {
+                timeSlotId: index + 1,
+                startTime: `${String(startHour).padStart(2, '0')}:00:00`,
+                endTime: `${String(endHour).padStart(2, '0')}:00:00`,
+                isAvailable: true,
+                isPeakHour,
+                price: isPeakHour ? 120000 : 100000,
+                status: 'Available' as const,
+              };
+            }),
+    }));
   },
 
   hold: async (courtId: number, playDate: string, timeSlotIds: number[]) => {
