@@ -1,8 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Auth;
 using SportHub.Domain.Entities.Facility;
+using SportHub.Domain.Entities.Payment;
 using SportHub.Domain.Entities.Player;
 
 namespace SportHub.Infrastructure.Persistence.Seed;
@@ -45,11 +46,55 @@ public static class DataSeeder
         ("Luong Thu Ha", "0930000020", 100, 3.50m, "Intermediate", 390, "Silver")
     ];
 
+    private static bool _schemaPatched;
+
+    public static async Task EnsureSchemaUpToDateAsync(SportHubDbContext db)
+    {
+        if (_schemaPatched) return;
+
+        try
+        {
+            await db.Database.MigrateAsync();
+        }
+        catch
+        {
+            // Nếu DB đã tạo bảng trước đó không qua lịch sử migration chuẩn thì dùng DDL bổ sung bên dưới
+        }
+
+        const string patchSql = """
+            IF COL_LENGTH('PaymentTransactions', 'PaymentUrl') IS NULL
+                ALTER TABLE [PaymentTransactions] ADD [PaymentUrl] nvarchar(2048) NULL;
+
+            IF COL_LENGTH('PaymentTransactions', 'ProviderTransactionDate') IS NULL
+                ALTER TABLE [PaymentTransactions] ADD [ProviderTransactionDate] datetime2 NULL;
+
+            IF COL_LENGTH('PaymentTransactions', 'ProviderTransactionId') IS NULL
+                ALTER TABLE [PaymentTransactions] ADD [ProviderTransactionId] nvarchar(100) NULL;
+
+            IF COL_LENGTH('PaymentTransactions', 'RelatedTransactionId') IS NULL
+                ALTER TABLE [PaymentTransactions] ADD [RelatedTransactionId] int NULL;
+
+            IF COL_LENGTH('PaymentTransactions', 'TransactionType') IS NULL
+                ALTER TABLE [PaymentTransactions] ADD [TransactionType] nvarchar(10) NOT NULL CONSTRAINT [DF_PaymentTransactions_TransactionType] DEFAULT N'Payment';
+
+            IF COL_LENGTH('BookingCancellations', 'RefundFailureReason') IS NULL
+                ALTER TABLE [BookingCancellations] ADD [RefundFailureReason] nvarchar(500) NULL;
+
+            IF COL_LENGTH('BookingCancellations', 'RefundStatus') IS NULL
+                ALTER TABLE [BookingCancellations] ADD [RefundStatus] nvarchar(20) NOT NULL CONSTRAINT [DF_BookingCancellations_RefundStatus] DEFAULT N'NotRequired';
+            """;
+
+        await db.Database.ExecuteSqlRawAsync(patchSql);
+        _schemaPatched = true;
+    }
+
     public static async Task SeedDevelopmentDataAsync(this IServiceProvider services)
     {
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<SportHubDbContext>();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
+
+        await EnsureSchemaUpToDateAsync(db);
 
         var roleSeeds = new[]
         {
@@ -77,6 +122,35 @@ public static class DataSeeder
                 db.Sports.Add(new Sport { SportCode = code, SportName = name });
         }
         await db.SaveChangesAsync();
+
+        if (!await db.TimeSlots.AnyAsync())
+        {
+            var peakStart = new TimeOnly(17, 0);
+            var peakEnd = new TimeOnly(21, 0);
+            for (int h = 6; h < 23; h++)
+            {
+                var slotStart = new TimeOnly(h, 0);
+                var slotEnd = new TimeOnly(h + 1, 0);
+                db.TimeSlots.Add(new TimeSlot
+                {
+                    SlotIndex = h - 6 + 1,
+                    StartTime = slotStart,
+                    EndTime = slotEnd,
+                    IsDefaultPeak = slotStart >= peakStart && slotEnd <= peakEnd
+                });
+            }
+            await db.SaveChangesAsync();
+        }
+
+        if (!await db.PaymentMethods.AnyAsync())
+        {
+            db.PaymentMethods.AddRange(
+                new PaymentMethod { MethodCode = "CASH", MethodName = "Tiền mặt tại quầy", IsActive = true },
+                new PaymentMethod { MethodCode = "QR_TRANSFER", MethodName = "Chuyển khoản VietQR", IsActive = true },
+                new PaymentMethod { MethodCode = "VNPAY", MethodName = "Cổng thanh toán VNPay", IsActive = true }
+            );
+            await db.SaveChangesAsync();
+        }
 
         var firstFacilityId = await db.Facilities
             .OrderBy(facility => facility.Id)

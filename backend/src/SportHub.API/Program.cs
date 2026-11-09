@@ -50,6 +50,11 @@ if (seedRequested)
     return;
 }
 
+if (app.Environment.IsDevelopment())
+{
+    await app.Services.SeedDevelopmentDataAsync();
+}
+
 // Global Exception Handler
 app.UseMiddleware<GlobalExceptionHandler>();
 

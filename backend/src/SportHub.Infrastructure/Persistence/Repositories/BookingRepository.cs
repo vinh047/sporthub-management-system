@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Domain.Entities.Booking;
 using SportHub.Domain.Enums;
+using SportHub.Infrastructure.Persistence.Seed;
 
 namespace SportHub.Infrastructure.Persistence.Repositories;
 
@@ -40,11 +41,14 @@ public class BookingRepository(SportHubDbContext context)
 
     public async Task<IReadOnlyList<Domain.Entities.Facility.TimeSlot>> GetTimeSlotsAsync(
         IReadOnlyCollection<int> timeSlotIds)
-        => await _context.TimeSlots
+    {
+        await DataSeeder.EnsureSchemaUpToDateAsync(_context);
+        return await _context.TimeSlots
             .AsNoTracking()
-            .Where(slot => timeSlotIds.Contains(slot.Id))
+            .Where(slot => timeSlotIds.Contains(slot.Id) || timeSlotIds.Contains(slot.SlotIndex))
             .OrderBy(slot => slot.StartTime)
             .ToListAsync();
+    }
 
     public async Task LockSlotAsync(int courtId, DateOnly playDate, int timeSlotId)
     {
@@ -68,7 +72,7 @@ public class BookingRepository(SportHubDbContext context)
 
         var slot = await _context.TimeSlots
             .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == timeSlotId);
+            .FirstOrDefaultAsync(s => s.Id == timeSlotId || s.SlotIndex == timeSlotId);
         if (slot is null) return "Unavailable";
 
         var now = DateTime.UtcNow;
@@ -76,7 +80,7 @@ public class BookingRepository(SportHubDbContext context)
             .Where(d =>
             d.CourtId == courtId &&
             d.PlayDate == playDate &&
-            d.TimeSlotId == timeSlotId &&
+            d.TimeSlotId == slot.Id &&
             ((d.Booking.BookingStatus == BookingStatus.Held &&
                 (d.Booking.HoldExpiresAt == null || d.Booking.HoldExpiresAt > now)) ||
              d.Booking.BookingStatus == BookingStatus.Confirmed))

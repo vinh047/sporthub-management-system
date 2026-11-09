@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Domain.Entities.Facility;
+using SportHub.Domain.Entities.Payment;
+using SportHub.Infrastructure.Persistence.Seed;
 
 namespace SportHub.Infrastructure.Persistence.Repositories;
 
@@ -21,7 +23,44 @@ public class FacilityRepository(SportHubDbContext context)
             .FirstOrDefaultAsync(f => f.Id == id);
 
     public async Task<IEnumerable<TimeSlot>> GetTimeSlotsAsync()
-        => await _context.TimeSlots.OrderBy(s => s.SlotIndex).ToListAsync();
+    {
+        await DataSeeder.EnsureSchemaUpToDateAsync(_context);
+
+        var slots = await _context.TimeSlots.OrderBy(s => s.SlotIndex).ToListAsync();
+        if (slots.Count == 0)
+        {
+            var peakStart = new TimeOnly(17, 0);
+            var peakEnd = new TimeOnly(21, 0);
+
+            for (int h = 6; h < 23; h++)
+            {
+                var slotStart = new TimeOnly(h, 0);
+                var slotEnd = new TimeOnly(h + 1, 0);
+                slots.Add(new TimeSlot
+                {
+                    SlotIndex = h - 6 + 1,
+                    StartTime = slotStart,
+                    EndTime = slotEnd,
+                    IsDefaultPeak = slotStart >= peakStart && slotEnd <= peakEnd
+                });
+            }
+
+            await _context.TimeSlots.AddRangeAsync(slots);
+            await _context.SaveChangesAsync();
+        }
+
+        if (!await _context.PaymentMethods.AnyAsync())
+        {
+            await _context.PaymentMethods.AddRangeAsync(
+                new PaymentMethod { MethodCode = "CASH", MethodName = "Tiền mặt tại quầy", IsActive = true },
+                new PaymentMethod { MethodCode = "QR_TRANSFER", MethodName = "Chuyển khoản VietQR", IsActive = true },
+                new PaymentMethod { MethodCode = "VNPAY", MethodName = "Cổng thanh toán VNPay", IsActive = true }
+            );
+            await _context.SaveChangesAsync();
+        }
+
+        return slots;
+    }
 
     public async Task<IEnumerable<Sport>> GetActiveSportsAsync()
         => await _context.Sports.Where(s => s.IsActive)
