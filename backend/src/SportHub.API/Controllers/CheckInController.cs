@@ -24,6 +24,14 @@ public class CheckInController(ICheckInService checkInService) : ApiControllerBa
         => Ok(BaseResponse<List<CheckInItem>>.Ok(
             await checkInService.GetTodayAsync(facilityId, RequiredUserId, IsAdmin)));
 
+    /// <summary>Lịch sử Check-in đã ghi nhận tại quầy POS của cơ sở</summary>
+    [HttpGet("history")]
+    public async Task<ActionResult<BaseResponse<List<CheckInHistoryItemDto>>>> History(
+        [FromQuery] int facilityId,
+        [FromQuery] DateOnly? date = null)
+        => Ok(BaseResponse<List<CheckInHistoryItemDto>>.Ok(
+            await checkInService.GetHistoryAsync(facilityId, date, RequiredUserId, IsAdmin)));
+
     /// <summary>Check-in một khung giờ của đơn</summary>
     [HttpPost]
     public async Task<ActionResult<BaseResponse>> CheckIn([FromBody] CheckInRequest request)

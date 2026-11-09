@@ -29,11 +29,31 @@ public class CheckInRepository(SportHubDbContext context)
 
     public Task<List<BookingDetail>> GetDetailsByFacilityAsync(int facilityId, DateOnly playDate)
         => Details
+            .AsNoTracking()
             .Where(d => d.PlayDate == playDate
                 && d.Court.FacilityId == facilityId
                 && d.Booking.BookingStatus != BookingStatus.Cancelled)
             .OrderBy(d => d.TimeSlot.StartTime).ThenBy(d => d.Court.CourtName)
             .ToListAsync();
+
+    public Task<List<CheckInLog>> GetCheckInHistoryAsync(int facilityId, DateOnly? playDate = null)
+    {
+        var query = _context.CheckInLogs
+            .AsNoTracking()
+            .Include(l => l.StaffUser)
+            .Include(l => l.ParticipantUser)
+            .Include(l => l.BookingDetail).ThenInclude(d => d.Booking).ThenInclude(b => b.User)
+            .Include(l => l.BookingDetail).ThenInclude(d => d.Court)
+            .Include(l => l.BookingDetail).ThenInclude(d => d.TimeSlot)
+            .Where(l => l.BookingDetail.Court.FacilityId == facilityId);
+
+        if (playDate.HasValue)
+            query = query.Where(l => l.BookingDetail.PlayDate == playDate.Value);
+
+        return query
+            .OrderByDescending(l => l.CheckInAt)
+            .ToListAsync();
+    }
 
     public Task<int?> GetStaffFacilityIdAsync(int staffUserId)
         => _context.StaffProfiles
