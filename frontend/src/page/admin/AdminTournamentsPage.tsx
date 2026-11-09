@@ -1,3 +1,4 @@
+import { tournamentTeamStatusLabels } from '../../utils/tournamentStatus';
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import toast from 'react-hot-toast';
@@ -464,14 +465,14 @@ export default function AdminTournamentsPage() {
                 <p className="py-6 text-center text-sm text-gray-500">Chưa có đội nào đăng ký trong giải này.</p>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {selectedDetail.teams.map((team, idx) => (
+                  {selectedDetail.teams.map((team) => (
                     <div key={team.id} className="rounded-xl border border-gray-200 p-4">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-gray-900">
-                          Hạt giống #{team.seedNumber ?? idx + 1}: {team.teamName}
+                          {team.seedNumber != null ? `Hạt giống #${team.seedNumber}: ` : ''}{team.teamName}
                         </span>
                         <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                          {team.status}
+                          {tournamentTeamStatusLabels[team.status] ?? team.status}
                         </span>
                       </div>
                       <ul className="mt-2.5 space-y-1.5 text-xs text-gray-600">

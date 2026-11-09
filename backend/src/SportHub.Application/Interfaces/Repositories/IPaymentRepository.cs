@@ -4,6 +4,7 @@ namespace SportHub.Application.Interfaces.Repositories;
 
 public interface IPaymentRepository : IRepository<PaymentTransaction>
 {
+    Task<PaymentTransaction?> GetLatestPaymentForTournamentTeamAsync(int teamId);
     Task<PaymentMethod?> GetMethodByCodeAsync(string methodCode);
     Task<PaymentTransaction?> GetByReferenceCodeAsync(string referenceCode);
     Task<PaymentTransaction?> GetLatestPaymentForBookingAsync(int bookingId);

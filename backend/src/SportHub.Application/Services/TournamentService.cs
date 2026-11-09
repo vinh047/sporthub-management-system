@@ -13,6 +13,26 @@ public class TournamentService(IUnitOfWork uow) : ITournamentService
     private static readonly HashSet<string> ValidTypes = ["SingleElimination", "RoundRobin"];
     private static readonly HashSet<string> ValidStatuses = ["Draft", "OpenReg", "DrawCompleted", "InProgress", "Finished"];
 
+    public async Task<List<TournamentDetailDto>> GetMyTournamentsAsync(int userId)
+    {
+        var tournaments = await uow.Tournaments.GetByParticipantAsync(userId);
+        var result = new List<TournamentDetailDto>();
+        foreach (var tournament in tournaments)
+        {
+            var detail = await ToPaymentAwareDetailDtoAsync(tournament);
+            var teams = detail.Teams.Where(team => team.Athletes.Any(a => a.UserId == userId)).ToList();
+            var teamIds = teams.Select(team => team.Id).ToHashSet();
+            result.Add(detail with
+            {
+                Teams = teams,
+                Matches = detail.Matches.Where(match =>
+                    (match.Team1Id.HasValue && teamIds.Contains(match.Team1Id.Value)) ||
+                    (match.Team2Id.HasValue && teamIds.Contains(match.Team2Id.Value))).ToList()
+            });
+        }
+        return result;
+    }
+
     public async Task<List<TournamentDto>> GetTournamentsAsync(int? facilityId, int? sportId, string? status)
     {
         var tournaments = await uow.Tournaments.GetFilteredAsync(facilityId, sportId, status);
@@ -27,7 +47,7 @@ public class TournamentService(IUnitOfWork uow) : ITournamentService
         var tournament = await uow.Tournaments.GetByIdWithDetailsAsync(id, asNoTracking: true)
             ?? throw new NotFoundException("Giải đấu", id);
 
-        return ToDetailDto(tournament);
+        return await ToPaymentAwareDetailDtoAsync(tournament);
     }
 
     public async Task<TournamentDto> CreateTournamentAsync(CreateTournamentRequest request, int staffUserId, bool isAdmin)
@@ -123,6 +143,19 @@ public class TournamentService(IUnitOfWork uow) : ITournamentService
                 throw new ForbiddenException("Bạn không có quyền quản lý giải đấu của cơ sở khác.");
         }
 
+        if (cleanStatus is "DrawCompleted" or "InProgress")
+        {
+            foreach (var team in tournament.Teams.Where(team => team.Status != "Disqualified"))
+            {
+                var payment = tournament.EntryFee > 0
+                    ? await uow.Payments.GetLatestPaymentForTournamentTeamAsync(team.Id)
+                    : null;
+                if (team.Status != "Approved" ||
+                    (tournament.EntryFee > 0 && payment?.Status != Domain.Enums.PaymentStatus.Confirmed))
+                    throw new ConflictException($"Đội '{team.TeamName}' chưa hoàn tất thanh toán. Chưa thể bốc thăm hoặc bắt đầu giải.");
+            }
+        }
+
         tournament.Status = cleanStatus;
         await uow.SaveChangesAsync();
 
@@ -207,11 +240,10 @@ public class TournamentService(IUnitOfWork uow) : ITournamentService
             var athleteUsers = new List<(User User, bool IsCaptain)>();
             var addedUserIds = new HashSet<int>();
 
-            if (!existingAthleteUserIds.Contains(captain.Id))
-            {
-                athleteUsers.Add((captain, true));
-                addedUserIds.Add(captain.Id);
-            }
+            if (existingAthleteUserIds.Contains(captain.Id))
+                throw new ConflictException("Bạn đã tham gia một đội trong giải đấu này.");
+            athleteUsers.Add((captain, true));
+            addedUserIds.Add(captain.Id);
 
             if (request.MemberPhones is not null)
             {
@@ -288,8 +320,7 @@ public class TournamentService(IUnitOfWork uow) : ITournamentService
             {
                 TournamentId = tournament.Id,
                 TeamName = trimmedTeamName,
-                SeedNumber = activeTeams.Count + 1,
-                Status = "Approved",
+                Status = tournament.EntryFee > 0 ? "Registered" : "Approved",
                 RegistrationDate = DateTime.UtcNow
             };
 
@@ -314,6 +345,25 @@ public class TournamentService(IUnitOfWork uow) : ITournamentService
             await uow.RollbackTransactionAsync();
             throw;
         }
+    }
+
+    private async Task<TournamentDetailDto> ToPaymentAwareDetailDtoAsync(Tournament tournament)
+    {
+        var detail = ToDetailDto(tournament);
+        if (tournament.EntryFee <= 0) return detail;
+        var teams = new List<TournamentTeamDto>();
+        foreach (var team in detail.Teams)
+        {
+            // Legacy registrations were approved before payment. Present approval
+            // from the recorded payment without modifying historical rows on a GET.
+            var payment = team.Status == "Approved"
+                ? await uow.Payments.GetLatestPaymentForTournamentTeamAsync(team.Id)
+                : null;
+            teams.Add(team.Status == "Approved" && payment?.Status != Domain.Enums.PaymentStatus.Confirmed
+                ? team with { Status = "Registered", SeedNumber = null }
+                : team);
+        }
+        return detail with { Teams = teams };
     }
 
     private static TournamentDto ToDto(Tournament t) => new(

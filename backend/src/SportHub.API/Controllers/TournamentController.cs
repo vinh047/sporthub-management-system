@@ -11,6 +11,12 @@ public class TournamentController(ITournamentService tournamentService) : ApiCon
 {
     private bool IsAdmin => CurrentUserRole == "ADMIN";
 
+    [HttpGet("mine")]
+    [Authorize]
+    public async Task<ActionResult<BaseResponse<List<TournamentDetailDto>>>> GetMine()
+        => Ok(BaseResponse<List<TournamentDetailDto>>.Ok(
+            await tournamentService.GetMyTournamentsAsync(RequiredUserId)));
+
     /// <summary>Lấy danh sách giải đấu (hỗ trợ lọc theo cơ sở, môn thể thao, trạng thái)</summary>
     [HttpGet]
     [AllowAnonymous]

@@ -71,4 +71,12 @@ import { BookingSlot, PriceBreakdown } from '../components/booking';
 
 ## Extension policy
 
+### Tournament fee payment
+
+`TournamentHubPage` groups discovery and participation at `/player/tournaments` (and the public `/tournaments` entry). Two labelled navigation links select discovery or `?tab=mine`, with `aria-current` and visible keyboard focus. Discovery uses a 1/2/3-column responsive card grid; personal tournaments use a 1/2-column grid. `TournamentsPage` and `MyTournamentsPage` support `embedded` rendering under the shared header. The former `/player/my-tournaments` URL redirects to the personal tab while preserving VNPay return parameters; the main menu contains one tournament entry.
+
+The `/player/my-tournaments` page uses `PageHeader`, `Select`, `Badge`, and shared loading/error/empty states. It lists only the signed-in player's teams and their matches from `/api/tournaments/mine`. Captains can pay using the fee panel; members see the roster and captain responsible for payment. Paid-entry registration is `Registered` (chờ thanh toán); only a confirmed server payment changes it to `Approved` (đã duyệt). Free-entry teams are approved immediately. Registration and the VNPay return route lead to this page. Team approval updates through the optional `onTeamStatusChange(teamId, status)` callback after a status request.
+
+`page/user/TournamentTeamPayment` is a domain panel inside the tournament team list, visible to that team's captain. It accepts `tournament` and `team` DTOs, uses existing `Badge` and `Button` variants, and delegates requests to `useTournamentPayment`. It shows the server fee, loading, unpaid, pending, confirmed, failed, free-entry, and error states. Status updates use a polite live region; errors use an alert. Actions wrap on narrow screens and disable during submission. Pending status is polled at most ten times per check, with a manual refresh action afterward. Only the authenticated status API can establish payment success.
+
 Before adding a component, search this library and existing `src/components`. Add only components that have a concrete reusable use case. Document public props, variants, states, and accessibility behavior here.

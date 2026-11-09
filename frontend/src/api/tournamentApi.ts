@@ -83,7 +83,48 @@ export interface RegisterTournamentTeamRequest {
   memberNames?: string[];
 }
 
+export interface TournamentPaymentLink {
+  teamId: number;
+  tournamentId: number;
+  teamName: string;
+  amount: number;
+  referenceCode: string;
+  paymentUrl: string;
+  expiresAt: string;
+}
+
+export interface TournamentFeePayment {
+  transactionId: number;
+  tournamentId: number;
+  tournamentName: string;
+  teamId: number;
+  teamName: string;
+  teamStatus: string;
+  amount: number;
+  paymentMethodCode: string;
+  paymentStatus: string;
+  referenceCode: string | null;
+  paymentUrl: string | null;
+  createdAt: string;
+  processedAt: string | null;
+}
+
 export const tournamentApi = {
+  getMine: (signal?: AbortSignal) =>
+    axiosInstance
+      .get<ApiResponse<TournamentDetailDto[]>>('/tournaments/mine', { signal })
+      .then((res) => res.data.data ?? []),
+
+  createVnPayPayment: (tournamentId: number, teamId: number) =>
+    axiosInstance
+      .post<ApiResponse<TournamentPaymentLink>>(`/payment/tournaments/${tournamentId}/teams/${teamId}/vnpay`)
+      .then((res) => res.data.data!),
+
+  getPaymentStatus: (tournamentId: number, teamId: number, signal?: AbortSignal) =>
+    axiosInstance
+      .get<ApiResponse<TournamentFeePayment | null>>(`/payment/tournaments/${tournamentId}/teams/${teamId}/status`, { signal })
+      .then((res) => res.data.data ?? null),
+
   getAll: (params?: { facilityId?: number; sportId?: number; status?: string }) =>
     axiosInstance
       .get<ApiResponse<TournamentDto[]>>('/tournaments', { params })

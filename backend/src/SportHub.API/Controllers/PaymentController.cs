@@ -9,8 +9,27 @@ using SportHub.Application.Interfaces.Services;
 namespace SportHub.API.Controllers;
 
 [Route("api/payment")]
-public class PaymentController(IPaymentService paymentService, IConfiguration configuration) : ApiControllerBase
+public class PaymentController(IPaymentService paymentService, ITournamentPaymentService tournamentPaymentService, IConfiguration configuration) : ApiControllerBase
 {
+    [HttpPost("tournaments/{tournamentId:int}/teams/{teamId:int}/vnpay")]
+    [Authorize]
+    public async Task<ActionResult<BaseResponse<TournamentVnPayPaymentLinkResponse>>> CreateTournamentPayment(
+        int tournamentId, int teamId, CancellationToken cancellationToken)
+    {
+        var result = await tournamentPaymentService.CreateVnPayPaymentAsync(tournamentId, teamId, RequiredUserId,
+            HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1", cancellationToken);
+        return Ok(BaseResponse<TournamentVnPayPaymentLinkResponse>.Ok(result));
+    }
+
+    [HttpGet("tournaments/{tournamentId:int}/teams/{teamId:int}/status")]
+    [Authorize]
+    public async Task<ActionResult<BaseResponse<TournamentFeePaymentResponse?>>> GetTournamentPaymentStatus(
+        int tournamentId, int teamId, CancellationToken cancellationToken)
+    {
+        var result = await tournamentPaymentService.GetPaymentStatusAsync(tournamentId, teamId, RequiredUserId, cancellationToken);
+        return Ok(BaseResponse<TournamentFeePaymentResponse?>.Ok(result));
+    }
+
     [HttpPost("bookings/{bookingId:int}/vnpay")]
     [Authorize]
     public async Task<ActionResult<BaseResponse<VnPayPaymentLinkResponse>>> CreateBookingPayment(
@@ -57,10 +76,9 @@ public async Task<ActionResult<VnPayIpnResponse>> HandleVnPayIpn(
     var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString()
         ?? "127.0.0.1";
 
-    var result = await paymentService.ProcessVnPayIpnAsync(
-        parameters,
-        clientIp,
-        cancellationToken);
+    var result = IsTournamentReference(parameters)
+        ? await tournamentPaymentService.ProcessVnPayIpnAsync(parameters, cancellationToken)
+        : await paymentService.ProcessVnPayIpnAsync(parameters, clientIp, cancellationToken);
 
     Console.WriteLine($"IPN RESPONSE: {result.RspCode}");
 
@@ -75,6 +93,18 @@ public async Task<ActionResult<VnPayIpnResponse>> HandleVnPayIpn(
             parameter => parameter.Key,
             parameter => parameter.Value.ToString(),
             StringComparer.Ordinal);
+        if (IsTournamentReference(parameters))
+        {
+            var tournamentResult = await tournamentPaymentService.ValidateVnPayReturnAsync(parameters, cancellationToken);
+            var tournamentUrl = configuration["VNPay:TournamentFrontendReturnUrl"]
+                ?? "http://localhost:5173/player/my-tournaments";
+            return Redirect(QueryHelpers.AddQueryString(tournamentUrl, new Dictionary<string, string?>
+            {
+                ["paymentResult"] = !tournamentResult.IsValid ? "invalid" : tournamentResult.PaymentReportedSuccessful ? "processing" : "failed",
+                ["tournamentId"] = tournamentResult.TournamentId?.ToString(),
+                ["teamId"] = tournamentResult.TeamId?.ToString()
+            }));
+        }
         var result = await paymentService.ValidateVnPayReturnAsync(parameters, cancellationToken);
         var frontendUrl = configuration["VNPay:FrontendReturnUrl"]
             ?? "http://localhost:5173/player/my-bookings";
@@ -91,4 +121,6 @@ public async Task<ActionResult<VnPayIpnResponse>> HandleVnPayIpn(
 
         return Redirect(QueryHelpers.AddQueryString(frontendUrl, query));
     }
+    private static bool IsTournamentReference(IReadOnlyDictionary<string, string> parameters)
+        => parameters.TryGetValue("vnp_TxnRef", out var reference) && reference.StartsWith("TN", StringComparison.Ordinal);
 }

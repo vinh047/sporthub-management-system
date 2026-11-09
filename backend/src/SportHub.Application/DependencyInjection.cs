@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<IBookingService, BookingService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<ITournamentPaymentService, TournamentPaymentService>();
         services.AddScoped<ICheckInService, CheckInService>();
         services.AddScoped<IPosService, PosService>();
         services.AddScoped<ITournamentService, TournamentService>();

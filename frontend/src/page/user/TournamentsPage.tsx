@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Award, Building, Calendar, CheckCircle2, CircleCheck, Clock, Crown, FileText,
-  LoaderCircle, MapPin, Plus, Search, ShieldAlert, ShieldCheck, Swords, Trash2,
+  LoaderCircle, Plus, Search, ShieldAlert, ShieldCheck, Swords, Trash2,
   Trophy, UserPlus, Users, X,
 } from 'lucide-react';
 import { PublicSiteFooter, PublicSiteHeader } from '../../components/PublicSiteChrome';
@@ -16,6 +16,9 @@ import type { Facility, Sport } from '../../api/facilityModels';
 import { tournamentApi } from '../../api/tournamentApi';
 import type { TournamentDetailDto, TournamentDto } from '../../api/tournamentApi';
 import { useAuthStore } from '../../store/authStore';
+import TournamentTeamPayment from './TournamentTeamPayment';
+import { Button, Dialog } from '../../components/ui';
+import { tournamentTeamStatusLabels } from '../../utils/tournamentStatus';
 
 const inputClass =
   'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-red-600 focus:outline-none focus:ring-4 focus:ring-red-600/10';
@@ -46,7 +49,7 @@ const formatDate = (dateStr: string) => {
   return Number.isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('vi-VN');
 };
 
-export default function TournamentsPage() {
+export default function TournamentsPage({ embedded = false }: { embedded?: boolean }) {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -79,6 +82,43 @@ export default function TournamentsPage() {
   const [memberErrors, setMemberErrors] = useState<Record<number, { name?: string; phone?: string }>>({});
   const [agreedError, setAgreedError] = useState<string | null>(null);
   const [submitErrorBanner, setSubmitErrorBanner] = useState<string | null>(null);
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const result = params.get('paymentResult');
+    if (!result) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setPaymentNotice(result === 'processing'
+        ? 'Đã quay về từ VNPay. Xem trạng thái thanh toán được hệ thống xác nhận trong thẻ đội của bạn.'
+        : result === 'failed'
+          ? 'Giao dịch VNPay chưa thành công hoặc đã bị hủy. Kiểm tra trạng thái của đội trước khi thanh toán lại.'
+          : 'Không xác thực được kết quả trả về từ VNPay. Vui lòng mở danh sách đội để kiểm tra trạng thái.');
+      const tournamentId = Number(params.get('tournamentId'));
+      const teamId = Number(params.get('teamId'));
+      if (!isAuthenticated || !Number.isSafeInteger(tournamentId) || tournamentId <= 0 || !Number.isSafeInteger(teamId) || teamId <= 0) return;
+      setSelectedDetail(null);
+      setDetailModalOpen(true);
+      setDetailTab('teams');
+      setDetailLoading(true);
+      void tournamentApi.getById(tournamentId).then((detail) => {
+        if (!active) return;
+        setSelectedDetail(detail);
+        params.delete('paymentResult');
+        params.delete('tournamentId');
+        params.delete('teamId');
+        navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+      }).catch((err) => {
+        if (!active) return;
+        setPaymentNotice(getErrorMessage(err));
+        setDetailModalOpen(false);
+      }).finally(() => {
+        if (active) setDetailLoading(false);
+      });
+    }, 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [isAuthenticated, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     void Promise.all([facilityApi.getFacilities(), facilityApi.getSports()])
@@ -145,6 +185,7 @@ export default function TournamentsPage() {
     setDetailTab(initialTab);
     setDetailModalOpen(true);
     setDetailLoading(true);
+    setSelectedDetail(null);
     try {
       const detail = await tournamentApi.getById(tournamentId);
       setSelectedDetail(detail);
@@ -281,9 +322,7 @@ export default function TournamentsPage() {
       });
       toast.success(res.message ?? 'Đăng ký đội tham gia giải đấu thành công!');
       setRegisterModalOpen(false);
-      await loadTournaments();
-      // Mở ngay modal chi tiết ở tab Danh sách Đội để người dùng thấy đội vừa đăng ký
-      await openDetailModal(registerTarget.id, 'teams');
+      navigate('/player/tournaments?tab=mine');
     } catch (err) {
       const msg = getErrorMessage(err);
       setSubmitErrorBanner(msg);
@@ -298,8 +337,14 @@ export default function TournamentsPage() {
 
   const content = (
     <div className="space-y-8 animate-fade-in">
+      {paymentNotice && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-border bg-surface p-4 text-sm text-foreground">
+          <p>{paymentNotice}</p>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setPaymentNotice(null)}>Đóng thông báo</Button>
+        </div>
+      )}
       {/* Banner Cổng thông tin Giải đấu */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-red-700 via-red-800 to-[#2b0808] p-8 text-white shadow-lg">
+      {!embedded && <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-red-700 via-red-800 to-[#2b0808] p-8 text-white shadow-lg">
         <div className="absolute -right-12 -top-12 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
         <div className="relative flex flex-wrap items-center justify-between gap-6">
           <div className="max-w-2xl">
@@ -331,6 +376,8 @@ export default function TournamentsPage() {
         </div>
       </section>
 
+      }
+      {embedded && <div className="flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-xl font-bold text-foreground">Khám phá giải đấu</h2><p className="mt-1 text-sm text-muted">Chọn giải phù hợp với đội của bạn.</p></div><span className="text-sm text-muted">{loading ? 'Đang tải…' : `${filteredTournaments.length} giải đấu`}</span></div>}
       {/* Bộ lọc Giải đấu */}
       <section className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
         <label className="block space-y-1">
@@ -391,7 +438,7 @@ export default function TournamentsPage() {
           <p className="mt-1 text-sm text-gray-500">Hãy thử đổi bộ lọc cơ sở, môn thể thao hoặc từ khóa tìm kiếm.</p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filteredTournaments.map((t) => {
             const meta = STATUS_META[t.status] ?? { label: t.status, badgeClass: 'bg-gray-100 text-gray-700' };
             const isFull = t.registeredTeamsCount >= t.maxTeams;
@@ -401,7 +448,7 @@ export default function TournamentsPage() {
             return (
               <article
                 key={t.id}
-                className="flex flex-col justify-between rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-red-100 hover:shadow-md"
+                className="flex min-w-0 flex-col justify-between rounded-card border border-border bg-surface-raised p-5 transition-colors hover:border-primary/30"
               >
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -500,32 +547,13 @@ export default function TournamentsPage() {
 
       {/* Modal Xem Điều lệ, Danh sách Đội & Lịch thi đấu */}
       {detailModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-red-700">
-                  Cổng thông tin Giải đấu · Điều lệ & Danh sách Đội
-                </p>
-                <h3 className="mt-1 text-2xl font-extrabold text-gray-900">
-                  {selectedDetail?.name ?? 'Đang tải...'}
-                </h3>
-                {selectedDetail && (
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
-                    <MapPin size={14} className="text-red-600" />
-                    {selectedDetail.facilityName} — {selectedDetail.facilityAddress || 'Hệ thống sân SportHub'}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setDetailModalOpen(false)}
-                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
+        <Dialog
+          open={detailModalOpen}
+          onOpenChange={setDetailModalOpen}
+          title={selectedDetail?.name ?? 'SportHub'}
+          description={selectedDetail ? `${selectedDetail.facilityName} - ${selectedDetail.facilityAddress}` : undefined}
+          className="max-w-3xl"
+        >
             {detailLoading || !selectedDetail ? (
               <div className="flex items-center justify-center py-12 text-gray-500">
                 <LoaderCircle size={22} className="mr-2 animate-spin text-red-600" />
@@ -629,14 +657,14 @@ export default function TournamentsPage() {
                       </p>
                     ) : (
                       <div className="grid gap-3 sm:grid-cols-2">
-                        {selectedDetail.teams.map((team, index) => (
+                        {selectedDetail.teams.map((team) => (
                           <div key={team.id} className="rounded-xl border border-gray-200 p-4">
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-gray-900">
-                                Hạt giống #{team.seedNumber ?? index + 1} · {team.teamName}
+                                {team.seedNumber != null ? `Hạt giống #${team.seedNumber} · ` : ''}{team.teamName}
                               </span>
                               <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                                {team.status}
+                                {tournamentTeamStatusLabels[team.status] ?? team.status}
                               </span>
                             </div>
                             <p className="mt-0.5 text-[11px] text-gray-400">
@@ -664,6 +692,12 @@ export default function TournamentsPage() {
                                 </li>
                               ))}
                             </ul>
+                            {isAuthenticated && team.athletes.some((athlete) => athlete.isCaptain && athlete.userId === user?.userId) && (
+                              <TournamentTeamPayment key={`${selectedDetail.id}-${team.id}`} tournament={selectedDetail} team={team}
+                                onTeamStatusChange={(teamId, status) => setSelectedDetail((detail) => detail ? {
+                                  ...detail, teams: detail.teams.map((item) => item.id === teamId ? { ...item, status } : item),
+                                } : detail)} />
+                            )}
                           </div>
                         ))}
                       </div>
@@ -716,8 +750,7 @@ export default function TournamentsPage() {
                 )}
               </div>
             )}
-          </div>
-        </div>
+        </Dialog>
       )}
 
       {/* Modal Form Đăng ký Đội / Vận động viên */}
@@ -869,6 +902,10 @@ export default function TournamentsPage() {
                 </span>
               </div>
 
+              {registerTarget.entryFee > 0 && (
+                <p className="text-sm text-muted">Sau khi đăng ký, đội ở trạng thái chờ thanh toán. Đội trưởng thanh toán qua VNPay tại Giải đấu của tôi; đội được duyệt khi hệ thống xác nhận giao dịch thành công.</p>
+              )}
+
               <div className="space-y-1">
                 <label className="flex items-start gap-2.5 text-xs text-gray-600 cursor-pointer">
                   <input
@@ -913,6 +950,7 @@ export default function TournamentsPage() {
     </div>
   );
 
+  if (embedded) return content;
   if (isInsidePlayerLayout) {
     return (
       <div className="space-y-4">

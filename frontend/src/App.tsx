@@ -19,7 +19,7 @@ import PricingPage from './page/admin/PricingPage';
 import PromotionsPage from './page/admin/PromotionsPage';
 import AdminTournamentsPage from './page/admin/AdminTournamentsPage';
 import VouchersPage from './page/user/VouchersPage';
-import TournamentsPage from './page/user/TournamentsPage';
+import TournamentHubPage, { LegacyMyTournamentsRedirect } from './page/user/TournamentHubPage';
 
 function App() {
   return (
@@ -39,7 +39,7 @@ function App() {
       <Routes>
         {/* Công khai */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/tournaments" element={<TournamentsPage />} />
+        <Route path="/tournaments" element={<TournamentHubPage />} />
         <Route path="/vouchers" element={<VouchersPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -56,7 +56,8 @@ function App() {
           <Route index element={<PlayerHomePage />} />
           <Route path="booking" element={<BookingPage />} />
           <Route path="my-bookings" element={<MyBookingsPage />} />
-          <Route path="tournaments" element={<TournamentsPage />} />
+          <Route path="tournaments" element={<TournamentHubPage />} />
+          <Route path="my-tournaments" element={<LegacyMyTournamentsRedirect />} />
           <Route path="vouchers" element={<VouchersPage />} />
         </Route>
 

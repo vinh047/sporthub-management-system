@@ -17,8 +17,10 @@ namespace SportHub.Tests;
 
 public sealed class TournamentAndPosCheckInTests
 {
-    [Fact]
-    public async Task Create_tournament_and_register_team_with_athletes_succeeds()
+    [Theory]
+    [InlineData(150000, "Registered")]
+    [InlineData(0, "Approved")]
+    public async Task Create_tournament_and_register_team_with_athletes_succeeds(int entryFee, string expectedStatus)
     {
         var options = await CreateSeededInMemoryDbAsync();
         using var context = new SportHubDbContext(options);
@@ -35,7 +37,7 @@ public sealed class TournamentAndPosCheckInTests
                 StartDate: DateOnly.FromDateTime(DateTime.Now.AddDays(7)),
                 EndDate: DateOnly.FromDateTime(DateTime.Now.AddDays(8)),
                 MaxTeams: 4,
-                EntryFee: 150_000m,
+                EntryFee: entryFee,
                 PrizeDescription: "Cúp vàng + 3.000.000đ",
                 Status: "OpenReg"),
             staffUserId: 2,
@@ -53,6 +55,8 @@ public sealed class TournamentAndPosCheckInTests
             currentUserId: 5);
 
         Assert.Equal("Phoenix Badminton", team.TeamName);
+        Assert.Equal(expectedStatus, team.Status);
+        Assert.Null(team.SeedNumber);
         Assert.Equal(2, team.Athletes.Count);
         Assert.Contains(team.Athletes, a => a.UserId == 5 && a.IsCaptain);
         Assert.Contains(team.Athletes, a => a.UserId == 6 && !a.IsCaptain);
@@ -60,6 +64,16 @@ public sealed class TournamentAndPosCheckInTests
         var detail = await tournamentService.GetTournamentByIdAsync(created.Id);
         Assert.Equal(1, detail.RegisteredTeamsCount);
         Assert.Single(detail.Teams);
+        Assert.Single(await tournamentService.GetMyTournamentsAsync(5));
+        Assert.Single(await tournamentService.GetMyTournamentsAsync(6));
+        Assert.Empty(await tournamentService.GetMyTournamentsAsync(7));
+        await Assert.ThrowsAsync<ConflictException>(() => tournamentService.RegisterTeamAsync(
+            created.Id, new RegisterTournamentTeamRequest("Second team", ["0922222299"]), 5));
+        if (entryFee > 0)
+            await Assert.ThrowsAsync<ConflictException>(() => tournamentService.UpdateTournamentStatusAsync(created.Id, "DrawCompleted", 2, false));
+        await tournamentService.UpdateTournamentStatusAsync(created.Id, "Finished", 2, false);
+        await Assert.ThrowsAsync<ValidationException>(() => tournamentService.RegisterTeamAsync(
+            created.Id, new RegisterTournamentTeamRequest("Closed team"), 7));
     }
 
     [Fact]

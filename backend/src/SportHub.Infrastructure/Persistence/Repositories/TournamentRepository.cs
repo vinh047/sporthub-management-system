@@ -7,6 +7,19 @@ namespace SportHub.Infrastructure.Persistence.Repositories;
 public class TournamentRepository(SportHubDbContext context)
     : Repository<Tournament>(context), ITournamentRepository
 {
+    public async Task<List<Tournament>> GetByParticipantAsync(int userId)
+        => await _dbSet.AsNoTracking()
+            .Where(t => t.Teams.Any(team => team.Athletes.Any(a => a.UserId == userId)))
+            .Include(t => t.Facility)
+            .Include(t => t.Sport)
+            .Include(t => t.Teams).ThenInclude(team => team.Athletes).ThenInclude(a => a.User).ThenInclude(u => u.PlayerProfile)
+            .Include(t => t.Matches).ThenInclude(m => m.Court)
+            .Include(t => t.Matches).ThenInclude(m => m.Team1)
+            .Include(t => t.Matches).ThenInclude(m => m.Team2)
+            .AsSplitQuery()
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+
     public async Task<IEnumerable<Tournament>> GetByFacilityAsync(int facilityId)
         => await _dbSet
             .AsNoTracking()
