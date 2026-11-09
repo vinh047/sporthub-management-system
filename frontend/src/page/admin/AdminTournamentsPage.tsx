@@ -1,3 +1,4 @@
+import TournamentBracketPanel from '../../components/tournament/TournamentBracketPanel';
 import { tournamentTeamStatusLabels } from '../../utils/tournamentStatus';
 import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -453,6 +454,9 @@ export default function AdminTournamentsPage() {
                   <X size={18} />
                 </button>
               </div>
+
+              <TournamentBracketPanel key={selectedDetail.id} tournamentId={selectedDetail.id}
+                canManage={user?.role === 'ADMIN' || (user?.role === 'STAFF' && user.facilityId === selectedDetail.facilityId)} />
 
               {selectedDetail.prizeDescription && (
                 <div className="flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">

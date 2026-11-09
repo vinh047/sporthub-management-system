@@ -71,6 +71,14 @@ import { BookingSlot, PriceBreakdown } from '../components/booking';
 
 ## Extension policy
 
+### Live tournament bracket
+
+`Dialog.size` supports `md` (default, max-w-lg), `lg` (max-w-3xl) and `xl` (max-w-6xl). Bracket dialogs use `xl` so multiple rounds remain visible on desktop; the existing viewport height limit and mobile width apply at every size.
+
+`TournamentBracketPanel({ tournamentId, canManage? })` is the domain controller for generating a bracket and recording finished sets. It uses `useTournamentBracket` for REST snapshots, SignalR subscription/rejoin, version ordering, cleanup and a 15-second recovery poll. Only branch Staff/Admin see management actions, with server authorization enforced independently. It shows loading, empty, unsupported-format, error, disconnected, live, and champion states. Confirmation and score forms use the existing native `Dialog`, `Input`, `Button` and `Badge` components. Score forms keep the version from opening time and disable submission if a live update makes them stale.
+
+`BracketView({ bracket, onScore? })` renders a seeded binary tree with round headers, SVG connectors, BYE labels, per-set scores and a champion. The scroll region has an accessible name and keyboard focus; team names have text labels and full-name tooltips. Fixed-size match cards maintain parent/child alignment; overflow is contained on mobile. It is available in the public tournament match tab, the player's personal tournament dialog, and Staff tournament details.
+
 ### Tournament fee payment
 
 `TournamentHubPage` groups discovery and participation at `/player/tournaments` (and the public `/tournaments` entry). Two labelled navigation links select discovery or `?tab=mine`, with `aria-current` and visible keyboard focus. Discovery uses a 1/2/3-column responsive card grid; personal tournaments use a 1/2-column grid. `TournamentsPage` and `MyTournamentsPage` support `embedded` rendering under the shared header. The former `/player/my-tournaments` URL redirects to the personal tab while preserving VNPay return parameters; the main menu contains one tournament entry.

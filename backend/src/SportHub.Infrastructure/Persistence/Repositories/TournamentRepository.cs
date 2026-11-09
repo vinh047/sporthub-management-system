@@ -57,7 +57,7 @@ public class TournamentRepository(SportHubDbContext context)
     public async Task<Tournament?> GetWithMatchesAsync(int tournamentId)
         => await _dbSet
             .Include(t => t.Teams).ThenInclude(team => team.Athletes)
-            .Include(t => t.Matches)
+            .Include(t => t.Matches).ThenInclude(m => m.Sets)
             .FirstOrDefaultAsync(t => t.Id == tournamentId);
 
     public async Task<Tournament?> GetByIdWithDetailsAsync(int tournamentId, bool asNoTracking = false)

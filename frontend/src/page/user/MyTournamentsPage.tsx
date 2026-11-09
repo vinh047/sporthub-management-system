@@ -1,10 +1,11 @@
+import TournamentBracketPanel from '../../components/tournament/TournamentBracketPanel';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CalendarDays, Crown, Trophy } from 'lucide-react';
 import { tournamentApi } from '../../api/tournamentApi';
 import type { TournamentDetailDto } from '../../api/tournamentApi';
 import { getErrorMessage } from '../../api/errors';
-import { Badge, Button, Select } from '../../components/ui';
+import { Badge, Button, Dialog, Select } from '../../components/ui';
 import { EmptyState, ErrorState, LoadingState, PageHeader } from '../../components/shared';
 import { useAuthStore } from '../../store/authStore';
 import { tournamentStatusLabels, tournamentTeamStatusLabels } from '../../utils/tournamentStatus';
@@ -18,6 +19,7 @@ export default function MyTournamentsPage({ embedded = false }: { embedded?: boo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  const [bracketId, setBracketId] = useState<number | null>(null);
   const [filter, setFilter] = useState('all');
   const [searchParams, setSearchParams] = useSearchParams();
   const paymentResult = searchParams.get('paymentResult');
@@ -116,6 +118,7 @@ export default function MyTournamentsPage({ embedded = false }: { embedded?: boo
               </section>
             );
           })}
+          <Button variant="outline" onClick={() => setBracketId(tournament.id)}>Xem nhánh đấu trực tiếp</Button>
           <section className="space-y-2 border-t border-border pt-4" aria-label="Lịch thi đấu của đội">
             <h3 className="font-semibold text-foreground">Lịch thi đấu của đội</h3>
             {tournament.matches.length === 0 ? <p className="text-sm text-muted">Chưa có lịch thi đấu được công bố cho đội của bạn.</p> : (
@@ -130,6 +133,9 @@ export default function MyTournamentsPage({ embedded = false }: { embedded?: boo
           </section>
         </article>
       ))}</div>}
+      <Dialog open={bracketId !== null} title="Nhánh đấu trực tiếp" onOpenChange={(open) => { if (!open) setBracketId(null); }} size="xl">
+        {bracketId !== null && <TournamentBracketPanel key={bracketId} tournamentId={bracketId} />}
+      </Dialog>
     </div>
   );
 }

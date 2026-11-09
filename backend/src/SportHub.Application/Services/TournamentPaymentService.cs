@@ -20,6 +20,8 @@ public class TournamentPaymentService(IUnitOfWork uow, IVnPayGateway gateway) : 
         {
             var (tournament, team) = await GetOwnedTeamAsync(tournamentId, teamId, userId);
             var now = DateTime.UtcNow;
+            if (tournament.Matches.Count > 0 && !tournament.Matches.Any(m => m.Team1Id == team.Id || m.Team2Id == team.Id))
+                throw new ConflictException("Nhánh đấu đã được chốt và đội không có trong nhánh. Không thể tạo thanh toán mới.");
             if (tournament.Status is not ("OpenReg" or "DrawCompleted" or "InProgress") || team.Status == "Disqualified")
                 throw new ConflictException("Giải đấu hoặc đội không còn đủ điều kiện thanh toán lệ phí.");
 

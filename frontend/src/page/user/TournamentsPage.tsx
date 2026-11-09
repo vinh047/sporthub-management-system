@@ -1,3 +1,4 @@
+import TournamentBracketPanel from '../../components/tournament/TournamentBracketPanel';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -34,13 +35,6 @@ const STATUS_META: Record<string, { label: string; badgeClass: string }> = {
 const FORMAT_LABEL: Record<string, string> = {
   SingleElimination: 'Loại trực tiếp (Knockout)',
   RoundRobin: 'Đấu vòng tròn (Round Robin)',
-};
-
-const ROUND_LABEL: Record<number, string> = {
-  1: 'Vòng loại / Vòng 1',
-  2: 'Tứ kết',
-  3: 'Bán kết',
-  4: 'Chung kết',
 };
 
 const formatDate = (dateStr: string) => {
@@ -552,7 +546,7 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
           onOpenChange={setDetailModalOpen}
           title={selectedDetail?.name ?? 'SportHub'}
           description={selectedDetail ? `${selectedDetail.facilityName} - ${selectedDetail.facilityAddress}` : undefined}
-          className="max-w-3xl"
+          size={detailTab === 'matches' ? 'xl' : 'lg'}
         >
             {detailLoading || !selectedDetail ? (
               <div className="flex items-center justify-center py-12 text-gray-500">
@@ -705,49 +699,8 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
                   </div>
                 )}
 
-                {detailTab === 'matches' && (
-                  <div className="space-y-3">
-                    {selectedDetail.matches.length === 0 ? (
-                      <p className="rounded-xl bg-gray-50 p-8 text-center text-sm text-gray-500">
-                        Ban tổ chức chưa công bố nhánh đấu / lịch thi đấu cho giải này.
-                      </p>
-                    ) : (
-                      <div className="space-y-2.5">
-                        {selectedDetail.matches.map((m) => (
-                          <div
-                            key={m.id}
-                            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 p-3.5 text-sm"
-                          >
-                            <div>
-                              <span className="text-xs font-bold uppercase text-red-700">
-                                {ROUND_LABEL[m.roundNumber] ?? `Vòng ${m.roundNumber}`} · Trận #{m.matchOrder}
-                              </span>
-                              <p className="mt-1 font-semibold text-gray-900">
-                                {m.team1Name ?? 'Chờ xác định'} <span className="text-gray-400">vs</span>{' '}
-                                {m.team2Name ?? 'Chờ xác định'}
-                              </p>
-                              <p className="mt-0.5 text-xs text-gray-500">
-                                Sân: <strong>{m.courtName ?? 'Chưa xếp sân'}</strong> · Giờ đấu:{' '}
-                                {m.scheduledStartTime ? new Date(m.scheduledStartTime).toLocaleString('vi-VN') : 'Chưa xếp giờ'}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              {m.scoreSummary ? (
-                                <span className="rounded-lg bg-emerald-50 px-3 py-1 font-mono text-xs font-bold text-emerald-800">
-                                  {m.scoreSummary}
-                                </span>
-                              ) : (
-                                <span className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                                  {m.status}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
+                {detailTab === 'matches' && <TournamentBracketPanel key={selectedDetail.id} tournamentId={selectedDetail.id} />}
+
               </div>
             )}
         </Dialog>

@@ -143,6 +143,10 @@ public class TournamentService(IUnitOfWork uow) : ITournamentService
                 throw new ForbiddenException("Bạn không có quyền quản lý giải đấu của cơ sở khác.");
         }
 
+        if (tournament.TournamentType == "SingleElimination" &&
+            (tournament.Matches.Count > 0 || cleanStatus is "DrawCompleted" or "InProgress"))
+            throw new ConflictException("Trạng thái giải loại trực tiếp được cập nhật bằng sinh nhánh và kết quả trận đấu.");
+
         if (cleanStatus is "DrawCompleted" or "InProgress")
         {
             foreach (var team in tournament.Teams.Where(team => team.Status != "Disqualified"))
