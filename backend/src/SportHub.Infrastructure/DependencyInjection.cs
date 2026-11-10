@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<ISocialSessionRepository, SocialSessionRepository>();
         services.AddScoped<ITournamentRepository, TournamentRepository>();
         services.AddScoped<ICheckInRepository, CheckInRepository>();
+        services.AddScoped<IReportRepository, ReportRepository>();
 
         // JWT & mật khẩu
         services.AddSingleton<IJwtTokenProvider, JwtTokenProvider>();

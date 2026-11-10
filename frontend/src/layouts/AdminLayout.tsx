@@ -40,7 +40,7 @@ const MENUS: Record<Area, MenuGroup[]> = {
       title: 'Tổng quan',
       items: [
         { to: '/admin', label: 'Bảng điều khiển', icon: LayoutDashboard },
-        { to: '/admin/reports', label: 'Báo cáo', icon: ChartColumn, feature: 'reports' },
+        { to: '/admin/reports', label: 'Báo cáo', icon: ChartColumn },
       ],
     },
     {

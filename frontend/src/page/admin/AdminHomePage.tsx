@@ -24,7 +24,7 @@ const MODULES: { title: string; description: string; icon: LucideIcon; to?: stri
   { title: 'Người chơi', description: 'Tìm kiếm, khóa hoặc mở khóa tài khoản', icon: Users, feature: 'players' },
   { title: 'Buổi chơi Social', description: 'Tạo buổi, bán vé, điểm danh', icon: Users, feature: 'social' },
   { title: 'Giải đấu', description: 'Tạo giải, mở đăng ký đội, xem danh sách VĐV', icon: Trophy, to: '/admin/tournaments' },
-  { title: 'Báo cáo', description: 'Doanh thu, tỷ lệ lấp đầy sân', icon: ChartColumn, feature: 'reports' },
+  { title: 'Báo cáo', description: 'Doanh thu, tỷ lệ lấp đầy sân', icon: ChartColumn, to: '/admin/reports' },
   { title: 'Thông báo & CRM', description: 'Mẫu thông báo, tặng voucher tự động', icon: Bell, feature: 'notifications' },
 ];
 

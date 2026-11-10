@@ -15,6 +15,7 @@ public interface IUnitOfWork : IDisposable
     ISocialSessionRepository SocialSessions { get; }
     ITournamentRepository Tournaments { get; }
     ICheckInRepository CheckIns { get; }
+    IReportRepository Reports { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted);
     Task CommitTransactionAsync();
