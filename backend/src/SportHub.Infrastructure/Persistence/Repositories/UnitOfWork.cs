@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using SportHub.Application.Interfaces.Repositories;
@@ -19,6 +19,7 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
     public ISocialSessionRepository SocialSessions { get; } = new SocialSessionRepository(context);
     public ITournamentRepository Tournaments { get; } = new TournamentRepository(context);
     public ICheckInRepository CheckIns { get; } = new CheckInRepository(context);
+    public IReportRepository Reports { get; } = new ReportRepository(context);
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
         => await context.SaveChangesAsync(ct);

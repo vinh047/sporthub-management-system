@@ -18,6 +18,7 @@ import MaintenancePage from './page/admin/MaintenancePage';
 import PricingPage from './page/admin/PricingPage';
 import PromotionsPage from './page/admin/PromotionsPage';
 import AdminTournamentsPage from './page/admin/AdminTournamentsPage';
+import ReportsPage from './page/admin/ReportsPage';
 import VouchersPage from './page/user/VouchersPage';
 import TournamentHubPage, { LegacyMyTournamentsRedirect } from './page/user/TournamentHubPage';
 
@@ -75,6 +76,7 @@ function App() {
           <Route path="pos" element={<PosPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="tournaments" element={<AdminTournamentsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         {/* Quản trị */}
@@ -94,6 +96,7 @@ function App() {
           <Route path="pricing" element={<PricingPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
           <Route path="tournaments" element={<AdminTournamentsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         {/* 404 Catch All */}
