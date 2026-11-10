@@ -9,6 +9,7 @@ interface DialogProps {
   onOpenChange: (open: boolean) => void;
   children: ReactNode;
   className?: string;
+  size?: 'md' | 'lg' | 'xl';
   closeLabel?: string;
 }
 
@@ -19,6 +20,7 @@ export default function Dialog({
   onOpenChange,
   children,
   className = '',
+  size = 'md',
   closeLabel = 'Đóng hộp thoại',
 }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -50,7 +52,7 @@ export default function Dialog({
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onOpenChangeRef.current(false);
       }}
-      className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-dialog border border-border bg-surface-raised p-0 text-foreground shadow-design-lg backdrop:bg-slate-950/50 ${className}`}
+      className={`m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] ${size === 'xl' ? 'max-w-6xl' : size === 'lg' ? 'max-w-3xl' : 'max-w-lg'} overflow-y-auto rounded-dialog border border-border bg-surface-raised p-0 text-foreground shadow-design-lg backdrop:bg-slate-950/50 ${className}`}
     >
       <div className="flex items-start justify-between gap-4 border-b border-border p-5 sm:p-6">
         <div>

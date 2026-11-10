@@ -30,6 +30,7 @@ builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ICourtStatusNotifier, SignalRCourtStatusNotifier>();
+builder.Services.AddSingleton<ITournamentNotifier, SignalRTournamentNotifier>();
 builder.Services.AddApiHealthChecks();
 
 // Clean Architecture Layers
@@ -48,6 +49,11 @@ if (seedRequested)
     Log.Information("Database seeding completed. Exiting without starting the API.");
     await app.DisposeAsync();
     return;
+}
+
+if (app.Environment.IsDevelopment())
+{
+    await app.Services.SeedDevelopmentDataAsync();
 }
 
 // Global Exception Handler
@@ -75,6 +81,7 @@ app.MapControllers();
 
 // SignalR Hubs
 app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<TournamentHub>("/hubs/tournaments");
 app.MapHub<CourtStatusHub>("/hubs/courts");
 app.MapHub<CourtStatusHub>("/hubs/court-status");
 

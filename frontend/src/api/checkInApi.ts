@@ -14,12 +14,34 @@ export interface CheckInItem {
   checkedInAt: string | null;
 }
 
+export interface CheckInHistoryItem {
+  checkInLogId: number;
+  bookingDetailId: number;
+  bookingCode: string;
+  customerName: string;
+  phone: string | null;
+  courtName: string;
+  playDate: string;
+  startTime: string;
+  endTime: string;
+  channel: string;
+  checkInAt: string;
+  staffName: string;
+}
+
 export type CheckInChannel = 'Phone' | 'QRCode' | 'Manual';
 
 export const checkInApi = {
   today: (facilityId: number) =>
     axiosInstance
       .get<ApiResponse<CheckInItem[]>>('/checkin/today', { params: { facilityId } })
+      .then((res) => res.data.data ?? []),
+
+  history: (facilityId: number, date?: string) =>
+    axiosInstance
+      .get<ApiResponse<CheckInHistoryItem[]>>('/checkin/history', {
+        params: { facilityId, ...(date ? { date } : {}) },
+      })
       .then((res) => res.data.data ?? []),
 
   lookup: (keyword: string) =>

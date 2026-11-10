@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ProtectedRoute } from './utils/authGuard';
 import HomePage from './page/user/HomePage';
@@ -17,7 +17,9 @@ import FacilitiesPage from './page/admin/FacilitiesPage';
 import MaintenancePage from './page/admin/MaintenancePage';
 import PricingPage from './page/admin/PricingPage';
 import PromotionsPage from './page/admin/PromotionsPage';
+import AdminTournamentsPage from './page/admin/AdminTournamentsPage';
 import VouchersPage from './page/user/VouchersPage';
+import TournamentHubPage, { LegacyMyTournamentsRedirect } from './page/user/TournamentHubPage';
 
 function App() {
   return (
@@ -37,6 +39,8 @@ function App() {
       <Routes>
         {/* Công khai */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/tournaments" element={<TournamentHubPage />} />
+        <Route path="/vouchers" element={<VouchersPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
@@ -52,6 +56,8 @@ function App() {
           <Route index element={<PlayerHomePage />} />
           <Route path="booking" element={<BookingPage />} />
           <Route path="my-bookings" element={<MyBookingsPage />} />
+          <Route path="tournaments" element={<TournamentHubPage />} />
+          <Route path="my-tournaments" element={<LegacyMyTournamentsRedirect />} />
           <Route path="vouchers" element={<VouchersPage />} />
         </Route>
 
@@ -68,6 +74,7 @@ function App() {
           <Route path="reception" element={<ReceptionPage />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
+          <Route path="tournaments" element={<AdminTournamentsPage />} />
         </Route>
 
         {/* Quản trị */}
@@ -86,6 +93,7 @@ function App() {
           <Route path="facilities" element={<FacilitiesPage />} />
           <Route path="pricing" element={<PricingPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
+          <Route path="tournaments" element={<AdminTournamentsPage />} />
         </Route>
 
         {/* 404 Catch All */}

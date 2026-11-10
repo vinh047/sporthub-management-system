@@ -937,6 +937,85 @@ public static class DbSeeder
             db.Tournaments.Add(tournament);
             await db.SaveChangesAsync();
         }
+
+        if (!await db.Tournaments.AnyAsync(tournament => tournament.Name == "SportHub Badminton Open 2026"))
+        {
+            var openTournament = new Tournament
+            {
+                FacilityId = 1,
+                SportId = 1,
+                Name = "SportHub Badminton Open 2026",
+                TournamentType = "SingleElimination",
+                RegistrationDeadline = DateTime.UtcNow.AddDays(10),
+                StartDate = today.AddDays(12),
+                EndDate = today.AddDays(14),
+                MaxTeams = 8,
+                EntryFee = 200_000m,
+                PrizeDescription = "Giải Nhất: 5.000.000đ + Cúp vàng | Giải Nhì: 2.500.000đ | Đồng Giải Ba: 1.000.000đ. Điều lệ: Đấu loại trực tiếp 3 set 21 điểm, điểm uy tín đội trưởng >= 60.",
+                Status = "OpenReg",
+                CreatedByStaffId = 2
+            };
+
+            openTournament.Teams.Add(new TournamentTeam
+            {
+                TeamName = "Thunder Smash Q7",
+                SeedNumber = 1,
+                Status = "Approved",
+                Athletes =
+                [
+                    new TournamentAthlete { UserId = 5, IsCaptain = true },
+                    new TournamentAthlete { UserId = 6, IsCaptain = false }
+                ]
+            });
+
+            openTournament.Teams.Add(new TournamentTeam
+            {
+                TeamName = "Golden Shuttle",
+                SeedNumber = 2,
+                Status = "Approved",
+                Athletes =
+                [
+                    new TournamentAthlete { UserId = 7, IsCaptain = true },
+                    new TournamentAthlete { UserId = 9, IsCaptain = false }
+                ]
+            });
+
+            db.Tournaments.Add(openTournament);
+            await db.SaveChangesAsync();
+        }
+
+        if (!await db.Tournaments.AnyAsync(tournament => tournament.Name == "Pickleball Masters Cup 2026"))
+        {
+            var pbTournament = new Tournament
+            {
+                FacilityId = 1,
+                SportId = 2,
+                Name = "Pickleball Masters Cup 2026",
+                TournamentType = "RoundRobin",
+                RegistrationDeadline = DateTime.UtcNow.AddDays(7),
+                StartDate = today.AddDays(9),
+                EndDate = today.AddDays(10),
+                MaxTeams = 16,
+                EntryFee = 150_000m,
+                PrizeDescription = "Giải Nhất: 3.000.000đ + Vợt Pickleball Pro | Giải Nhì: 1.500.000đ. Điều lệ: Thi đấu vòng tròn tính điểm bảng, chọn 4 đội cao điểm nhất vào bán kết.",
+                Status = "OpenReg",
+                CreatedByStaffId = 2
+            };
+
+            pbTournament.Teams.Add(new TournamentTeam
+            {
+                TeamName = "Saigon Dinkers",
+                SeedNumber = 1,
+                Status = "Approved",
+                Athletes =
+                [
+                    new TournamentAthlete { UserId = 8, IsCaptain = true }
+                ]
+            });
+
+            db.Tournaments.Add(pbTournament);
+            await db.SaveChangesAsync();
+        }
     }
 
     private static async Task SeedAdditionalBookingFixturesAsync(SportHubDbContext db, ILogger logger)

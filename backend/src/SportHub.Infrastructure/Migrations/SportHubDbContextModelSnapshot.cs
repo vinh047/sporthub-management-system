@@ -1386,6 +1386,10 @@ namespace SportHub.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<long>("BracketVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1513,11 +1517,37 @@ namespace SportHub.Infrastructure.Migrations
 
                     b.HasIndex("Team2Id");
 
-                    b.HasIndex("TournamentId");
-
                     b.HasIndex("WinnerTeamId");
 
+                    b.HasIndex("TournamentId", "RoundNumber", "MatchOrder")
+                        .IsUnique();
+
                     b.ToTable("TournamentMatches");
+                });
+
+            modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentMatchSet", b =>
+                {
+                    b.Property<int>("MatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SetNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RecordedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Team1Points")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Team2Points")
+                        .HasColumnType("int");
+
+                    b.HasKey("MatchId", "SetNumber");
+
+                    b.ToTable("TournamentMatchSet");
                 });
 
             modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentTeam", b =>
@@ -2112,6 +2142,17 @@ namespace SportHub.Infrastructure.Migrations
                     b.Navigation("WinnerTeam");
                 });
 
+            modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentMatchSet", b =>
+                {
+                    b.HasOne("SportHub.Domain.Entities.Tournament.TournamentMatch", "Match")
+                        .WithMany("Sets")
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Match");
+                });
+
             modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentTeam", b =>
                 {
                     b.HasOne("SportHub.Domain.Entities.Tournament.Tournament", "Tournament")
@@ -2237,6 +2278,11 @@ namespace SportHub.Infrastructure.Migrations
                     b.Navigation("Matches");
 
                     b.Navigation("Teams");
+                });
+
+            modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentMatch", b =>
+                {
+                    b.Navigation("Sets");
                 });
 
             modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentTeam", b =>

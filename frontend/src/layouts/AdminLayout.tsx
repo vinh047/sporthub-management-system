@@ -31,7 +31,7 @@ const MENUS: Record<Area, MenuGroup[]> = {
       items: [
         { to: '/staff/maintenance', label: 'Khóa sân bảo trì', icon: Wrench },
         { to: '/staff/social', label: 'Điểm danh Social', icon: ClipboardCheck, feature: 'socialCheckin' },
-        { to: '/staff/tournaments', label: 'Nhập tỉ số giải đấu', icon: Swords, feature: 'tournamentManage' },
+        { to: '/staff/tournaments', label: 'Quản lý giải đấu', icon: Swords },
       ],
     },
   ],
@@ -63,7 +63,7 @@ const MENUS: Record<Area, MenuGroup[]> = {
       title: 'Hoạt động',
       items: [
         { to: '/admin/social', label: 'Buổi chơi Social', icon: Users, feature: 'social' },
-        { to: '/admin/tournaments', label: 'Giải đấu', icon: Trophy, feature: 'tournamentManage' },
+        { to: '/admin/tournaments', label: 'Giải đấu', icon: Trophy },
       ],
     },
     {

@@ -16,7 +16,11 @@ public class CheckInService(IUnitOfWork uow) : ICheckInService
         if (string.IsNullOrWhiteSpace(keyword))
             throw new ValidationException(["Nhập mã đơn hoặc số điện thoại."]);
 
-        var details = await uow.CheckIns.SearchDetailsAsync(keyword.Trim(), Today);
+        var cleanKeyword = keyword.Trim();
+        if (cleanKeyword.Length is < 2 or > 50)
+            throw new ValidationException(["Từ khóa tra cứu phải từ 2 đến 50 ký tự."]);
+
+        var details = await uow.CheckIns.SearchDetailsAsync(cleanKeyword, Today);
 
         // Staff chỉ thấy đơn thuộc cơ sở mình
         if (!isAdmin)
@@ -30,15 +34,43 @@ public class CheckInService(IUnitOfWork uow) : ICheckInService
 
     public async Task<List<CheckInItem>> GetTodayAsync(int facilityId, int staffUserId, bool isAdmin)
     {
+        if (facilityId <= 0)
+            throw new ValidationException(["Mã cơ sở không hợp lệ."]);
+
         await EnsureSameFacilityAsync(facilityId, staffUserId, isAdmin);
         var details = await uow.CheckIns.GetDetailsByFacilityAsync(facilityId, Today);
         return details.Select(ToItem).ToList();
     }
 
+    public async Task<List<CheckInHistoryItemDto>> GetHistoryAsync(int facilityId, DateOnly? playDate, int staffUserId, bool isAdmin)
+    {
+        if (facilityId <= 0)
+            throw new ValidationException(["Mã cơ sở không hợp lệ."]);
+
+        await EnsureSameFacilityAsync(facilityId, staffUserId, isAdmin);
+        var logs = await uow.CheckIns.GetCheckInHistoryAsync(facilityId, playDate);
+        return logs.Select(l => new CheckInHistoryItemDto(
+            l.Id,
+            l.BookingDetailId,
+            l.BookingDetail.Booking.BookingCode,
+            l.ParticipantUser?.FullName ?? l.BookingDetail.Booking.User?.FullName ?? l.BookingDetail.Booking.GuestName ?? "Khách vãng lai",
+            l.ParticipantUser?.PhoneNumber ?? l.BookingDetail.Booking.User?.PhoneNumber ?? l.BookingDetail.Booking.GuestPhone,
+            l.BookingDetail.Court.CourtName,
+            l.BookingDetail.PlayDate,
+            l.BookingDetail.TimeSlot.StartTime,
+            l.BookingDetail.TimeSlot.EndTime,
+            l.CheckInChannel.ToString(),
+            l.CheckInAt,
+            l.StaffUser.FullName
+        )).ToList();
+    }
+
     public async Task CheckInAsync(CheckInRequest request, int staffUserId, bool isAdmin)
     {
-        if (!Enum.TryParse<CheckInChannel>(request.Channel, true, out var channel))
-            throw new ValidationException(["Kênh check-in không hợp lệ (Phone, QRCode, Manual)."]);
+        if (request.BookingDetailId <= 0)
+            throw new ValidationException(["Mã chi tiết ca đặt sân không hợp lệ."]);
+        if (string.IsNullOrWhiteSpace(request.Channel) || !Enum.TryParse<CheckInChannel>(request.Channel.Trim(), true, out var channel))
+            throw new ValidationException(["Kênh check-in không hợp lệ (Phone, BookingCode, QRCode, Manual)."]);
 
         var detail = await uow.CheckIns.GetDetailForCheckInAsync(request.BookingDetailId)
             ?? throw new NotFoundException("Chi tiết đơn", request.BookingDetailId);

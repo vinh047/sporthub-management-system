@@ -8,6 +8,14 @@ namespace SportHub.Infrastructure.Persistence.Repositories;
 public class PaymentRepository(SportHubDbContext context)
     : Repository<PaymentTransaction>(context), IPaymentRepository
 {
+    public async Task<PaymentTransaction?> GetLatestPaymentForTournamentTeamAsync(int teamId)
+        => await _dbSet.Include(t => t.PaymentMethod)
+            .Where(t => t.TournamentTeamId == teamId && t.TransactionType == PaymentTransactionType.Payment)
+            .OrderByDescending(t => t.Status == PaymentStatus.Confirmed)
+            .ThenByDescending(t => t.Status == PaymentStatus.Pending)
+            .ThenByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
+            .FirstOrDefaultAsync();
+
     public async Task<PaymentMethod?> GetMethodByCodeAsync(string methodCode)
         => await _context.PaymentMethods
             .FirstOrDefaultAsync(method => method.MethodCode == methodCode && method.IsActive);
@@ -15,6 +23,8 @@ public class PaymentRepository(SportHubDbContext context)
     public async Task<PaymentTransaction?> GetByReferenceCodeAsync(string referenceCode)
         => await _dbSet
             .Include(transaction => transaction.Booking)
+            .Include(transaction => transaction.PaymentMethod)
+            .Include(transaction => transaction.TournamentTeam)
             .FirstOrDefaultAsync(transaction => transaction.ReferenceCode == referenceCode);
 
     public async Task<PaymentTransaction?> GetLatestPaymentForBookingAsync(int bookingId)

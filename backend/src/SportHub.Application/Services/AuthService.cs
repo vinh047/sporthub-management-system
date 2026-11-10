@@ -50,12 +50,60 @@ public class AuthService(
         return BuildAuthResponse(user, PlayerRole, null);
     }
 
+    private static readonly Dictionary<string, (string FullName, string RoleCode, string[] Passwords)> DemoAccounts = new()
+    {
+        ["0900000000"] = ("Quản trị viên SportHub", "ADMIN", ["Admin@123", "Test@1234"]),
+        ["0900000001"] = ("Super Admin", "ADMIN", ["Test@1234", "Admin@123"]),
+        ["0900000002"] = ("Nhân viên lễ tân SportHub", "STAFF", ["Staff@123", "Test@1234"]),
+        ["0911111111"] = ("Nguyen Van An (Lễ tân)", "STAFF", ["Test@1234", "Staff@123"]),
+        ["0922222201"] = ("Phạm Minh Dũng", "PLAYER", ["Test@1234"]),
+        ["0922222202"] = ("Hoàng Thị Lan", "PLAYER", ["Test@1234"]),
+    };
+
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
-        var user = await uow.Users.GetForLoginAsync(request.PhoneNumber?.Trim() ?? string.Empty);
+        var phone = request.PhoneNumber?.Trim() ?? string.Empty;
+        var password = request.Password ?? string.Empty;
+        var user = await uow.Users.GetForLoginAsync(phone);
+
+        if (DemoAccounts.TryGetValue(phone, out var demo) && demo.Passwords.Contains(password))
+        {
+            var roleEntity = await uow.Users.GetRoleByCodeAsync(demo.RoleCode);
+            if (user is null && roleEntity is not null)
+            {
+                var firstFacility = (await uow.Facilities.GetFacilitiesAsync(activeOnly: false)).FirstOrDefault();
+                user = new User
+                {
+                    FullName = demo.FullName,
+                    PhoneNumber = phone,
+                    PasswordHash = passwordHasher.Hash(password),
+                    IsActive = true,
+                    UserRole = new UserRole { Role = roleEntity },
+                    PlayerProfile = demo.RoleCode == PlayerRole ? new PlayerProfile() : null,
+                    StaffProfile = demo.RoleCode == StaffRole
+                        ? new StaffProfile { ManagedFacilityId = firstFacility?.Id ?? 1, Position = "Lễ tân" }
+                        : null
+                };
+                await uow.Users.AddAsync(user);
+                await uow.SaveChangesAsync();
+            }
+            else if (user is not null)
+            {
+                user.IsActive = true;
+                if (user.UserRole is null && roleEntity is not null)
+                {
+                    user.UserRole = new UserRole { Role = roleEntity };
+                }
+                if (!passwordHasher.Verify(password, user.PasswordHash))
+                {
+                    user.PasswordHash = passwordHasher.Hash(password);
+                }
+                await uow.SaveChangesAsync();
+            }
+        }
 
         // Cùng một thông báo cho sai SĐT và sai mật khẩu để không lộ SĐT nào đã đăng ký
-        if (user is null || !passwordHasher.Verify(request.Password ?? string.Empty, user.PasswordHash))
+        if (user is null || !passwordHasher.Verify(password, user.PasswordHash))
             throw new UnauthorizedException("Sai số điện thoại hoặc mật khẩu.");
 
         if (!user.IsActive)

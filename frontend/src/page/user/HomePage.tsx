@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
@@ -22,9 +22,9 @@ const STATS = [
 ];
 
 const SERVICES: { title: string; description: string; feature?: FeatureKey; to?: string; icon: LucideIcon; tint: string }[] = [
-  { title: 'Đặt sân online', description: 'Xem lịch trống theo thời gian thực, giữ chỗ 10 phút và thanh toán bằng VietQR.', feature: 'booking', icon: CalendarDays, tint: 'bg-red-50 text-red-700' },
+  { title: 'Đặt sân online', description: 'Xem lịch trống theo thời gian thực, giữ chỗ 10 phút và thanh toán bằng VietQR.', to: '/player/booking', icon: CalendarDays, tint: 'bg-red-50 text-red-700' },
   { title: 'Buổi chơi Social', description: 'Mua vé tham gia buổi giao lưu hợp trình độ, không lo thiếu người.', feature: 'social', icon: Users, tint: 'bg-amber-50 text-amber-600' },
-  { title: 'Giải đấu', description: 'Đăng ký đội, theo dõi nhánh đấu và tỉ số cập nhật trực tiếp.', feature: 'tournaments', icon: Trophy, tint: 'bg-emerald-50 text-emerald-600' },
+  { title: 'Giải đấu', description: 'Đăng ký đội, xem điều lệ giải đấu và danh sách các đội tham dự.', to: '/tournaments', icon: Trophy, tint: 'bg-emerald-50 text-emerald-600' },
   { title: 'Ưu đãi thành viên', description: 'Xem các chương trình khuyến mãi đang mở và đăng nhập để nhận voucher.', to: '/vouchers', icon: Crown, tint: 'bg-purple-50 text-purple-600' },
 ];
 

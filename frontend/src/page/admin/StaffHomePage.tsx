@@ -15,7 +15,7 @@ const ACTIONS: { label: string; description: string; icon: LucideIcon; to?: stri
   { label: 'Lịch sân hôm nay', description: 'Ma trận sân × khung giờ', icon: CalendarDays, feature: 'schedule' },
   { label: 'Khóa sân bảo trì', description: 'Khóa sân theo ngày và khung giờ', icon: Wrench, to: '/staff/maintenance' },
   { label: 'Điểm danh Social', description: 'Check-in người tham gia buổi Social', icon: ClipboardCheck, feature: 'socialCheckin' },
-  { label: 'Nhập tỉ số giải đấu', description: 'Cập nhật kết quả từng trận', icon: Swords, feature: 'tournamentManage' },
+  { label: 'Quản lý giải đấu', description: 'Tạo giải đấu, xem danh sách đội đăng ký', icon: Swords, to: '/staff/tournaments' },
 ];
 
 /** Màn hình chính của nhân viên: số liệu ca làm hôm nay và lối tắt */
