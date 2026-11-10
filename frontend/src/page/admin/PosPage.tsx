@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import toast from 'react-hot-toast';
-import type { LucideIcon } from 'lucide-react';
 import {
-  Banknote, CalendarCheck, CircleCheck, Clock, Grid, History, Landmark,
-  ListRestart, LoaderCircle, LogIn, Radio, Search, Store,
+  ArrowUpRight,
+  Clock,
+  ExternalLink,
+  History,
+  ListRestart,
+  LogIn,
+  ScanLine,
+  Search,
+  Store,
+  UserCheck,
+  X,
 } from 'lucide-react';
 import type { SlotAvailability } from '../../api/bookingApi';
 import { checkInApi } from '../../api/checkInApi';
@@ -13,15 +21,13 @@ import { getErrorMessage } from '../../api/errors';
 import { facilityApi } from '../../api/facilityApi';
 import type { CourtAvailability, Facility, Sport } from '../../api/facilityModels';
 import { posApi } from '../../api/posApi';
+import type { PosCustomer } from '../../api/posApi';
 import CourtTimeGrid from '../../components/CourtTimeGrid';
+import ReceptionOrderModal from '../../components/ReceptionOrderModal';
+import { Badge, Button, Input, Select } from '../../components/ui';
 import { useCourtStatus } from '../../hooks/useSignalR';
 import type { CourtSlotUpdate } from '../../hooks/useSignalR';
 import { useAuthStore } from '../../store/authStore';
-
-const PAYMENT_METHODS: { id: number; label: string; icon: LucideIcon }[] = [
-  { id: 1, label: 'Tiền mặt tại quầy', icon: Banknote },
-  { id: 2, label: 'Chuyển khoản VietQR', icon: Landmark },
-];
 
 const todayString = () => new Date().toLocaleDateString('sv-SE');
 const hhmm = (time: string) => time.slice(0, 5);
@@ -30,10 +36,6 @@ const toLocalTime = (iso: string) =>
     hour: '2-digit',
     minute: '2-digit',
   });
-
-const inputClass =
-  'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-red-600 focus:outline-none focus:ring-4 focus:ring-red-600/10';
-const labelClass = 'text-sm font-medium text-gray-700';
 
 export default function PosPage() {
   const user = useAuthStore((state) => state.user);
@@ -46,25 +48,31 @@ export default function PosPage() {
   const [playDate, setPlayDate] = useState(todayString);
   const [slotIds, setSlotIds] = useState<number[]>([]);
   const [viewMode, setViewMode] = useState<'buttons' | 'matrix'>('matrix');
+
+  // Thông tin khách & tìm kiếm thành viên theo SĐT
   const [guestName, setGuestName] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<PosCustomer | null>(null);
+  const [customerResults, setCustomerResults] = useState<PosCustomer[]>([]);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+
   const [paymentMethodId, setPaymentMethodId] = useState(1);
   const [posErrors, setPosErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [availabilityReloadKey, setAvailabilityReloadKey] = useState(0);
-  const [lastCreatedBookingCode, setLastCreatedBookingCode] = useState<string | null>(null);
+  const [lastCreatedBooking, setLastCreatedBooking] = useState<{ id: number; code: string } | null>(null);
 
-  // Danh sách Check-in trong ngày & Lịch sử Check-in tại quầy POS
+  // Danh sách Check-in trong ngày & Lịch sử Check-in
   const [activeTab, setActiveTab] = useState<'today' | 'history'>('today');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'checkedIn'>('all');
   const [todayCheckIns, setTodayCheckIns] = useState<CheckInItem[]>([]);
   const [historyLogs, setHistoryLogs] = useState<CheckInHistoryItem[]>([]);
   const [checkInKeyword, setCheckInKeyword] = useState('');
-  const [checkInSearchError, setCheckInSearchError] = useState<string | null>(null);
   const [checkInChannel, setCheckInChannel] = useState<CheckInChannel>('Manual');
   const [loadingCheckIns, setLoadingCheckIns] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
 
   const availableFacilities = useMemo(
     () =>
@@ -93,9 +101,7 @@ export default function PosPage() {
         setSportId(sportRows[0] ? String(sportRows[0].id) : '');
       })
       .catch((error: unknown) => toast.error(getErrorMessage(error)))
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
@@ -127,13 +133,33 @@ export default function PosPage() {
           toast.error(getErrorMessage(error));
         }
       })
-      .finally(() => {
-        if (active) setLoadingAvailability(false);
-      });
+      .finally(() => active && setLoadingAvailability(false));
     return () => {
       active = false;
     };
   }, [facilityId, sportId, playDate, availabilityReloadKey]);
+
+  // Tự động tìm thành viên theo SĐT khi gõ ở form POS
+  useEffect(() => {
+    const query = guestPhone.trim();
+    if (selectedCustomer && selectedCustomer.phoneNumber === query) {
+      setCustomerResults([]);
+      return;
+    }
+    if (query.length < 3) {
+      setCustomerResults([]);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setSearchingCustomers(true);
+      posApi
+        .searchCustomers(query)
+        .then(setCustomerResults)
+        .catch(() => setCustomerResults([]))
+        .finally(() => setSearchingCustomers(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [guestPhone, selectedCustomer]);
 
   const loadCheckInData = useCallback(async () => {
     if (!facilityId) return;
@@ -157,7 +183,6 @@ export default function PosPage() {
     void loadCheckInData();
   }, [loadCheckInData]);
 
-  // Tích hợp SignalR Real-time theo đúng chuẩn sporthub-frontend-react
   const handleSlotUpdated = useCallback(
     (update: CourtSlotUpdate) => {
       setCourtOptions((current) =>
@@ -167,11 +192,7 @@ export default function PosPage() {
             ...court,
             slots: court.slots.map((slot) =>
               slot.timeSlotId === update.timeSlotId
-                ? {
-                    ...slot,
-                    status: update.status,
-                    isAvailable: update.status === 'Available',
-                  }
+                ? { ...slot, status: update.status, isAvailable: update.status === 'Available' }
                 : slot,
             ),
           };
@@ -192,12 +213,7 @@ export default function PosPage() {
     setSlotIds((prev) => (prev.includes(id) ? prev.filter((slot) => slot !== id) : [...prev, id]));
   };
 
-  const isSlotInPast = useCallback(
-    (_slot: SlotAvailability) => {
-      return playDate < todayString();
-    },
-    [playDate],
-  );
+  const isSlotInPast = useCallback((_slot: SlotAvailability) => playDate < todayString(), [playDate]);
 
   const handleMatrixToggleSlot = (court: CourtAvailability, slot: SlotAvailability) => {
     setPosErrors((prev) => ({ ...prev, slots: '', courtId: '' }));
@@ -227,34 +243,27 @@ export default function PosPage() {
     setSlotIds(rangeIds);
   };
 
+  const handleSelectCustomer = (customer: PosCustomer) => {
+    setSelectedCustomer(customer);
+    setGuestPhone(customer.phoneNumber);
+    setGuestName(customer.fullName);
+    setCustomerResults([]);
+    setPosErrors((prev) => ({ ...prev, guestName: '', guestPhone: '' }));
+  };
+
   const validatePosForm = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!courtId) {
-      errs.courtId = 'Vui lòng chọn sân con cần bán.';
-    }
-    if (slotIds.length === 0) {
-      errs.slots = 'Vui lòng chọn ít nhất 1 khung giờ (ca 60 phút) trên bảng ma trận hoặc danh sách ca giờ.';
-    } else if (slotIds.length > 17) {
-      errs.slots = 'Tối đa chỉ được chọn 17 khung giờ trong một đơn.';
-    }
-    if (playDate < todayString()) {
-      errs.playDate = 'Không thể tạo đơn POS cho ngày đã qua trong quá khứ.';
-    }
+    if (!courtId) errs.courtId = 'Vui lòng chọn sân con cần bán.';
+    if (slotIds.length === 0) errs.slots = 'Vui lòng chọn ít nhất 1 khung giờ.';
+    else if (slotIds.length > 17) errs.slots = 'Tối đa 17 khung giờ trong một đơn.';
+    if (playDate < todayString()) errs.playDate = 'Không thể tạo đơn cho ngày trong quá khứ.';
 
     const trimmedName = guestName.trim();
-    if (!trimmedName) {
-      errs.guestName = 'Vui lòng nhập họ tên khách vãng lai.';
-    } else if (trimmedName.length < 2 || trimmedName.length > 100) {
-      errs.guestName = 'Họ tên khách phải từ 2 đến 100 ký tự.';
-    } else if (/^\d+$/.test(trimmedName)) {
-      errs.guestName = 'Họ tên khách không được chỉ bao gồm chữ số.';
-    }
+    if (!trimmedName || trimmedName.length < 2) errs.guestName = 'Nhập tên khách (tối thiểu 2 ký tự).';
 
     const cleanedPhone = guestPhone.trim().replace(/[\s.-]/g, '');
-    if (!cleanedPhone) {
-      errs.guestPhone = 'Vui lòng nhập số điện thoại khách vãng lai.';
-    } else if (!/^0\d{8,10}$/.test(cleanedPhone)) {
-      errs.guestPhone = 'SĐT khách không hợp lệ (bắt đầu bằng 0, từ 9 đến 11 chữ số).';
+    if (!/^0\d{8,10}$/.test(cleanedPhone)) {
+      errs.guestPhone = 'SĐT khách không hợp lệ (9–11 chữ số, bắt đầu bằng 0).';
     }
 
     setPosErrors(errs);
@@ -276,13 +285,17 @@ export default function PosPage() {
         guestName: guestName.trim(),
         guestPhone: guestPhone.trim().replace(/[\s.-]/g, ''),
         paymentMethodId,
+        customerUserId: selectedCustomer?.userId ?? null,
       });
-      const createdCode = response.data?.bookingCode ?? null;
-      setLastCreatedBookingCode(createdCode);
+      if (response.data) {
+        setLastCreatedBooking({ id: response.data.bookingId, code: response.data.bookingCode });
+      }
       toast.success(response.message ?? 'Đặt sân tại quầy POS thành công!');
       setSlotIds([]);
       setGuestName('');
       setGuestPhone('');
+      setSelectedCustomer(null);
+      setCustomerResults([]);
       setPosErrors({});
       setAvailabilityReloadKey((k) => k + 1);
       await loadCheckInData();
@@ -295,20 +308,14 @@ export default function PosPage() {
 
   const handleSearchCheckIn = async (e: FormEvent) => {
     e.preventDefault();
-    const trimmedKeyword = checkInKeyword.trim();
-    if (!trimmedKeyword) {
-      setCheckInSearchError(null);
+    const trimmed = checkInKeyword.trim();
+    if (!trimmed) {
       await loadCheckInData();
       return;
     }
-    if (trimmedKeyword.length < 2 || trimmedKeyword.length > 50) {
-      setCheckInSearchError('Từ khóa tra cứu (mã đơn hoặc SĐT) phải từ 2 đến 50 ký tự.');
-      return;
-    }
-    setCheckInSearchError(null);
     setLoadingCheckIns(true);
     try {
-      setTodayCheckIns(await checkInApi.lookup(trimmedKeyword));
+      setTodayCheckIns(await checkInApi.lookup(trimmed));
       setActiveTab('today');
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -336,125 +343,107 @@ export default function PosPage() {
   const stats = useMemo(() => {
     const totalToday = todayCheckIns.length;
     const checkedInCount = todayCheckIns.filter((r) => r.checkedIn).length;
-    const waitingCount = totalToday - checkedInCount;
-    return { totalToday, checkedInCount, waitingCount };
+    return { totalToday, checkedInCount, waitingCount: totalToday - checkedInCount };
   }, [todayCheckIns]);
 
+  const earnedPointsPreview = selectedCustomer && total > 0 ? Math.max(1, Math.floor(total / 10000)) : 0;
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header + Chỉ số nhanh trong ngày */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">
-            <Radio size={13} className="animate-pulse" /> POS Lễ tân Real-time · UC10 & UC11
-          </span>
-          <h2 className="mt-2 text-2xl font-bold">Màn hình POS Lễ tân</h2>
-          <p className="text-sm text-gray-500">
-            Bán sân nhanh cho khách vãng lai, theo dõi ma trận lịch sân real-time và check-in khách trong ngày.
+    <div className="space-y-6">
+      {/* Header tương tự /player/tournaments */}
+      <header className="flex flex-wrap items-center justify-between gap-6 rounded-card border border-border bg-surface-raised p-5 sm:p-8">
+        <div className="max-w-2xl">
+          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
+            <Store size={16} aria-hidden="true" /> SportHub POS & Reception
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Bán sân tại quầy & Check-in trong ngày
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Chọn ca sân trống trên sơ đồ trực quan, nhập SĐT để tự động tìm thành viên cộng điểm thưởng và quản lý nhận/trả sân.
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-xs text-center">
-          <div className="px-3">
-            <p className="text-xl font-extrabold text-gray-900">{stats.totalToday}</p>
-            <p className="text-[11px] text-gray-500">Ca đặt hôm nay</p>
+        <div className="flex items-center gap-6 text-sm text-muted">
+          <div>
+            <span>Chờ Check-in</span>
+            <p className="text-xl font-bold text-primary">{stats.waitingCount} ca</p>
           </div>
-          <div className="border-x border-gray-100 px-3">
-            <p className="text-xl font-extrabold text-amber-600">{stats.waitingCount}</p>
-            <p className="text-[11px] text-gray-500">Chờ Check-in</p>
-          </div>
-          <div className="px-3">
-            <p className="text-xl font-extrabold text-emerald-600">{stats.checkedInCount}</p>
-            <p className="text-[11px] text-gray-500">Đã Check-in</p>
+          <div className="border-l border-border pl-6">
+            <span>Đã nhận sân</span>
+            <p className="text-xl font-bold text-foreground">{stats.checkedInCount} ca</p>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Bộ chọn Cơ sở, Bộ môn, Ngày chơi dùng chung */}
-      <section className="grid gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Cơ sở trực quầy">
-          <select
-            required
-            disabled={loading || availableFacilities.length === 0}
-            value={facilityId}
-            onChange={(e) => setFacilityId(e.target.value)}
-            className={inputClass}
+      {/* Bộ chọn Cơ sở, Bộ môn, Ngày chơi */}
+      <section className="grid gap-3 rounded-card border border-border bg-surface-raised p-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+        <Select
+          label="Cơ sở trực quầy"
+          disabled={loading || availableFacilities.length === 0}
+          value={facilityId}
+          onChange={(e) => setFacilityId(e.target.value)}
+        >
+          {availableFacilities.map((facility) => (
+            <option key={facility.id} value={facility.id}>
+              {facility.name}
+            </option>
+          ))}
+        </Select>
+
+        <Select
+          label="Bộ môn"
+          disabled={loading || sports.length === 0}
+          value={sportId}
+          onChange={(e) => setSportId(e.target.value)}
+        >
+          {sports.map((sport) => (
+            <option key={sport.id} value={sport.id}>
+              {sport.sportName}
+            </option>
+          ))}
+        </Select>
+
+        <Input
+          label="Ngày chơi"
+          type="date"
+          value={playDate}
+          min={todayString()}
+          onChange={(e) => setPlayDate(e.target.value)}
+        />
+
+        <div className="grid grid-cols-2 gap-1.5 rounded-control border border-border bg-surface p-1">
+          <button
+            type="button"
+            onClick={() => setViewMode('buttons')}
+            className={`rounded-control py-2 text-xs font-semibold transition-colors ${
+              viewMode === 'buttons'
+                ? 'border border-primary/20 bg-surface-raised text-primary shadow-design-sm'
+                : 'text-muted hover:bg-surface-raised'
+            }`}
           >
-            {availableFacilities.map((facility) => (
-              <option key={facility.id} value={facility.id}>
-                {facility.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Bộ môn">
-          <select
-            required
-            disabled={loading || sports.length === 0}
-            value={sportId}
-            onChange={(e) => setSportId(e.target.value)}
-            className={inputClass}
+            Chọn nhanh
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('matrix')}
+            className={`rounded-control py-2 text-xs font-semibold transition-colors ${
+              viewMode === 'matrix'
+                ? 'border border-primary/20 bg-surface-raised text-primary shadow-design-sm'
+                : 'text-muted hover:bg-surface-raised'
+            }`}
           >
-            {sports.map((sport) => (
-              <option key={sport.id} value={sport.id}>
-                {sport.sportName}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Ngày chơi">
-          <input
-            required
-            type="date"
-            value={playDate}
-            min={todayString()}
-            onChange={(e) => setPlayDate(e.target.value)}
-            className={inputClass}
-          />
-        </Field>
-        <Field label="Chế độ xem lịch sân">
-          <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-gray-100 p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode('buttons')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition ${
-                viewMode === 'buttons' ? 'bg-white text-red-700 shadow-xs' : 'text-gray-600'
-              }`}
-            >
-              <Store size={14} /> Chọn nhanh
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('matrix')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-semibold transition ${
-                viewMode === 'matrix' ? 'bg-white text-red-700 shadow-xs' : 'text-gray-600'
-              }`}
-            >
-              <Grid size={14} /> Ma trận sân
-            </button>
-          </div>
-        </Field>
+            Ma trận sân
+          </button>
+        </div>
       </section>
 
-      {/* Nếu bật chế độ Ma trận sân: hiển thị CourtTimeGrid chuẩn sporthub-frontend-react */}
       {viewMode === 'matrix' && (
-        <section className="space-y-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h3 className="font-bold text-gray-900">Sơ đồ ma trận lịch sân Real-time (`CourtTimeGrid`)</h3>
-              <p className="text-xs text-gray-500">
-                Bấm hoặc kéo chọn các ô màu xanh lá (Trống) để điền nhanh vào phiếu bán sân POS bên dưới.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs">
-              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-green-200 border border-green-500" /> Trống</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-yellow-300" /> Đang giữ chỗ</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-red-400" /> Đã đặt</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-purple-300" /> Sự kiện</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-gray-400" /> Bảo trì</span>
-            </div>
+        <section className="space-y-3 rounded-card border border-border bg-surface-raised p-5">
+          <div>
+            <h2 className="text-lg font-bold text-foreground">Sơ đồ ma trận lịch sân Real-time</h2>
+            <p className="text-xs text-muted">Bấm hoặc kéo chọn các ô trống để điền vào phiếu bán sân bên dưới.</p>
           </div>
-
           <CourtTimeGrid
             courts={courtOptions}
             selectedCourtId={courtId}
@@ -466,283 +455,255 @@ export default function PosPage() {
         </section>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-12">
-        {/* Cột trái: Bán sân nhanh cho khách vãng lai */}
+      <div className="grid gap-6 xl:grid-cols-12 items-start">
+        {/* Cột trái: Bán sân tại quầy */}
         <form
           onSubmit={handleSubmit}
-          className="space-y-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:p-6 xl:col-span-6"
+          className="space-y-4 rounded-card border border-border bg-surface-raised p-5 xl:col-span-6"
         >
-          <div className="flex items-start justify-between gap-2 border-b border-gray-100 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
             <div>
-              <h3 className="text-lg font-bold text-gray-900">1. Bán sân nhanh cho khách vãng lai</h3>
-              <p className="text-xs text-gray-500">
-                Chọn sân & ca giờ trống, thu tiền tại quầy và xác nhận đơn ngay lập tức.
+              <h2 className="text-lg font-bold text-foreground">1. Tạo đơn bán sân POS</h2>
+              <p className="text-xs text-muted">
+                Nhập SĐT để tự động tìm thành viên đã đăng ký (cộng điểm & lưu lịch sử).
               </p>
             </div>
-            {lastCreatedBookingCode && (
-              <span className="rounded-xl bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
-                Đơn vừa tạo: {lastCreatedBookingCode}
-              </span>
+            {lastCreatedBooking && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedBookingId(lastCreatedBooking.id)}
+              >
+                <ExternalLink size={13} /> Đơn vừa tạo: {lastCreatedBooking.code}
+              </Button>
             )}
           </div>
 
-          <Field label="Chọn sân thi đấu">
-            <select
-              required
-              disabled={loadingAvailability || courtOptions.length === 0}
-              value={courtId ?? ''}
-              onChange={(e) => {
-                setCourtId(Number(e.target.value) || null);
-                setSlotIds([]);
-              }}
-              className={inputClass}
-            >
-              {courtOptions.map((court) => (
-                <option key={court.courtId} value={court.courtId}>
-                  {court.courtName}
-                </option>
-              ))}
-            </select>
-          </Field>
+          <Select
+            label="Chọn sân thi đấu"
+            disabled={loadingAvailability || courtOptions.length === 0}
+            value={courtId ?? ''}
+            onChange={(e) => {
+              setCourtId(Number(e.target.value) || null);
+              setSlotIds([]);
+            }}
+          >
+            {courtOptions.map((court) => (
+              <option key={court.courtId} value={court.courtId}>
+                {court.courtName}
+              </option>
+            ))}
+          </Select>
 
           <section className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className={labelClass}>Khung giờ ({selectedCourt?.courtName ?? 'Chưa chọn sân'}) *</span>
-              {loadingAvailability && (
-                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                  <LoaderCircle size={14} className="animate-spin" /> Đang tải lịch...
-                </span>
-              )}
+            <span className="block text-sm font-medium text-foreground">
+              Khung giờ ({selectedCourt?.courtName ?? 'Chưa chọn sân'}) *
+            </span>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {selectedSlots.map((slot) => {
+                const selected = slotIds.includes(slot.timeSlotId);
+                const past = isSlotInPast(slot);
+                const canPick = slot.isAvailable && !past;
+                return (
+                  <button
+                    key={slot.timeSlotId}
+                    type="button"
+                    disabled={!canPick || loadingAvailability}
+                    onClick={() => toggleSlot(slot.timeSlotId)}
+                    className={`flex items-center justify-between gap-2 rounded-control border px-3 py-2 text-left text-xs transition-colors ${
+                      selected
+                        ? 'border-primary bg-primary text-white font-semibold'
+                        : canPick
+                          ? 'border-border bg-surface-raised text-foreground hover:bg-surface'
+                          : 'cursor-not-allowed border-border bg-surface text-muted opacity-60'
+                    }`}
+                  >
+                    <span>{slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}</span>
+                    <span>{canPick ? `${slot.price.toLocaleString('vi-VN')}đ` : 'Kín'}</span>
+                  </button>
+                );
+              })}
             </div>
-            {selectedSlots.length === 0 ? (
-              <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
-                Không có khung giờ cho lựa chọn này.
-              </p>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {selectedSlots.map((slot) => {
-                  const selected = slotIds.includes(slot.timeSlotId);
-                  const past = isSlotInPast(slot);
-                  const canPick = slot.isAvailable && !past;
-                  return (
-                    <button
-                      key={slot.timeSlotId}
-                      type="button"
-                      disabled={!canPick || loadingAvailability}
-                      onClick={() => toggleSlot(slot.timeSlotId)}
-                      className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-xs transition ${
-                        selected
-                          ? 'border-red-700 bg-red-700 text-white shadow-xs'
-                          : canPick
-                            ? 'border-gray-200 bg-white text-gray-700 hover:border-red-200'
-                            : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400'
-                      }`}
-                    >
-                      <span className="flex items-center gap-1.5 font-medium">
-                        {selected ? <CircleCheck size={14} /> : <Clock size={14} />}
-                        {slot.startTime.slice(0, 5)}–{slot.endTime.slice(0, 5)}
-                        {slot.isPeakHour && (
-                          <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-800">Peak</span>
-                        )}
-                      </span>
-                      <span className="whitespace-nowrap">
-                        {canPick ? `${slot.price.toLocaleString('vi-VN')}đ` : past ? 'Đã qua' : 'Đã kín'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            {posErrors.slots && (
-              <p className="text-xs font-medium text-red-600">{posErrors.slots}</p>
-            )}
-            {posErrors.playDate && (
-              <p className="text-xs font-medium text-red-600">{posErrors.playDate}</p>
-            )}
+            {posErrors.slots && <p className="text-xs text-error">{posErrors.slots}</p>}
           </section>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Tên khách vãng lai *">
-              <input
-                value={guestName}
-                onChange={(e) => {
-                  setGuestName(e.target.value);
-                  if (posErrors.guestName) setPosErrors((prev) => ({ ...prev, guestName: '' }));
-                }}
-                placeholder="VD: Nguyễn Văn Khách (2–100 ký tự)"
-                maxLength={100}
-                className={`${inputClass} ${posErrors.guestName ? 'border-red-400 bg-red-50/40' : ''}`}
-              />
-              {posErrors.guestName && (
-                <p className="mt-1 text-xs font-medium text-red-600">{posErrors.guestName}</p>
-              )}
-            </Field>
-            <Field label="Số điện thoại khách *">
-              <input
+          {/* Nhập SĐT tìm kiếm thành viên & Tên khách */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="relative">
+              <Input
+                label="Số điện thoại khách *"
                 type="tel"
                 value={guestPhone}
+                error={posErrors.guestPhone}
                 onChange={(e) => {
-                  setGuestPhone(e.target.value);
+                  const val = e.target.value;
+                  setGuestPhone(val);
+                  if (selectedCustomer && selectedCustomer.phoneNumber !== val.trim()) {
+                    setSelectedCustomer(null);
+                  }
                   if (posErrors.guestPhone) setPosErrors((prev) => ({ ...prev, guestPhone: '' }));
                 }}
-                placeholder="VD: 0909123456"
+                placeholder="Nhập SĐT tìm thành viên..."
                 maxLength={15}
-                className={`${inputClass} ${posErrors.guestPhone ? 'border-red-400 bg-red-50/40' : ''}`}
               />
-              {posErrors.guestPhone && (
-                <p className="mt-1 text-xs font-medium text-red-600">{posErrors.guestPhone}</p>
+
+              {!selectedCustomer && (searchingCustomers || customerResults.length > 0) && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-52 overflow-y-auto rounded-card border border-border bg-surface-raised p-1.5 shadow-design-lg text-xs">
+                  {searchingCustomers ? (
+                    <div className="p-2 text-center text-muted">Đang tìm thành viên...</div>
+                  ) : (
+                    customerResults.map((c) => (
+                      <button
+                        key={c.userId}
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        className="flex w-full items-center justify-between rounded-control px-3 py-2 text-left hover:bg-surface"
+                      >
+                        <div>
+                          <p className="font-semibold text-foreground">{c.fullName}</p>
+                          <p className="text-muted">{c.phoneNumber}</p>
+                        </div>
+                        <Badge variant="primary">
+                          {c.currentTier} · {c.loyaltyPoints} điểm
+                        </Badge>
+                      </button>
+                    ))
+                  )}
+                </div>
               )}
-            </Field>
-          </div>
-
-          <div className="space-y-1.5">
-            <span className={labelClass}>Phương thức thanh toán tại quầy</span>
-            <div className="grid grid-cols-2 gap-3">
-              {PAYMENT_METHODS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setPaymentMethodId(id)}
-                  className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition ${
-                    paymentMethodId === id
-                      ? 'border-red-600 bg-red-50 text-red-700'
-                      : 'border-gray-200 text-gray-700 hover:border-red-200'
-                  }`}
-                >
-                  <Icon size={18} />
-                  {label}
-                </button>
-              ))}
             </div>
+
+            <Input
+              label="Họ tên khách nhận sân *"
+              value={guestName}
+              error={posErrors.guestName}
+              onChange={(e) => {
+                setGuestName(e.target.value);
+                if (posErrors.guestName) setPosErrors((prev) => ({ ...prev, guestName: '' }));
+              }}
+              placeholder="Họ và tên khách"
+              maxLength={100}
+            />
           </div>
 
-          {/* Tóm tắt chi tiết các ca giờ đã chọn */}
-          {chosenSlotDetails.length > 0 && (
-            <div className="rounded-xl bg-gray-50 p-3.5 text-xs space-y-1.5">
-              <p className="font-semibold text-gray-700">
-                Phiếu tạm tính · {selectedCourt?.courtName} ({playDate}):
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {chosenSlotDetails.map((s) => (
-                  <span
-                    key={s.timeSlotId}
-                    className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 font-medium text-gray-700"
-                  >
-                    {hhmm(s.startTime)}–{hhmm(s.endTime)}: <strong>{s.price.toLocaleString('vi-VN')}đ</strong>
-                  </span>
-                ))}
+          {selectedCustomer && (
+            <div className="flex items-center justify-between rounded-control border border-primary/25 bg-surface px-3.5 py-2.5 text-xs">
+              <div className="flex items-center gap-2">
+                <UserCheck size={16} className="text-primary shrink-0" />
+                <div>
+                  <p className="font-semibold text-foreground">
+                    Thành viên: {selectedCustomer.fullName} ({selectedCustomer.phoneNumber})
+                  </p>
+                  <p className="text-muted">
+                    Hạng {selectedCustomer.currentTier} · {selectedCustomer.loyaltyPoints} điểm hiện có
+                    {earnedPointsPreview > 0 && (
+                      <strong className="ml-1 text-primary">
+                        (+{earnedPointsPreview} điểm & lưu lịch sử đơn này)
+                      </strong>
+                    )}
+                  </p>
+                </div>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedCustomer(null)}
+                title="Bỏ chọn thành viên"
+              >
+                <X size={14} />
+              </Button>
             </div>
           )}
 
-          {availableFacilities.length === 0 && !loading && (
-            <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-              Tài khoản chưa được gán cơ sở hoặc chưa có cơ sở đang hoạt động.
-            </p>
-          )}
+          <Select
+            label="Phương thức thanh toán tại quầy"
+            value={paymentMethodId}
+            onChange={(e) => setPaymentMethodId(Number(e.target.value))}
+          >
+            <option value={1}>Tiền mặt tại quầy</option>
+            <option value={2}>Chuyển khoản VietQR</option>
+          </Select>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <div>
-              <p className="text-xs text-gray-500">Tổng thanh toán ({slotIds.length} khung giờ)</p>
-              <p className="text-2xl font-extrabold text-red-700">{total.toLocaleString('vi-VN')} đ</p>
+              <p className="text-xs text-muted">Tổng thanh toán ({slotIds.length} khung giờ)</p>
+              <p className="text-2xl font-bold text-primary">{total.toLocaleString('vi-VN')} đ</p>
             </div>
-            <button
-              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-700 to-red-600 px-6 py-3 font-semibold text-white shadow-md hover:from-red-800 hover:to-red-700 disabled:opacity-60"
-              type="submit"
-              disabled={submitting || loadingAvailability}
-            >
-              {submitting ? <LoaderCircle size={18} className="animate-spin" /> : <CircleCheck size={18} />}
-              {submitting ? 'Đang tạo đơn...' : 'Xác nhận bán sân POS'}
-            </button>
+            <Button type="submit" loading={submitting} disabled={loadingAvailability}>
+              Xác nhận bán sân POS
+            </Button>
           </div>
         </form>
 
-        {/* Cột phải: Danh sách Check-in trong ngày & Lịch sử Check-in tại quầy POS */}
-        <section className="space-y-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm md:p-6 xl:col-span-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">2. Danh sách Check-in trong ngày</h3>
-              <p className="text-xs text-gray-500">
-                Tra cứu mã đơn / SĐT khách và bấm Check-in nhận sân tại quầy POS.
-              </p>
-            </div>
-            <div className="flex rounded-xl bg-gray-100 p-1 text-xs font-semibold">
+        {/* Cột phải: Danh sách Check-in trong ngày */}
+        <section className="space-y-4 rounded-card border border-border bg-surface-raised p-5 xl:col-span-6">
+          <nav className="grid grid-cols-2 gap-2 rounded-card border border-border bg-surface p-1.5">
+            {[
+              {
+                active: activeTab === 'today',
+                onClick: () => setActiveTab('today'),
+                icon: ScanLine,
+                label: `Đơn hôm nay (${todayCheckIns.length})`,
+              },
+              {
+                active: activeTab === 'history',
+                onClick: () => setActiveTab('history'),
+                icon: History,
+                label: `Lịch sử Check-in (${historyLogs.length})`,
+              },
+            ].map(({ active, onClick, icon: Icon, label }) => (
               <button
+                key={label}
                 type="button"
-                onClick={() => setActiveTab('today')}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 transition ${
-                  activeTab === 'today' ? 'bg-white text-red-700 shadow-xs' : 'text-gray-600'
+                onClick={onClick}
+                className={`flex items-center gap-2 rounded-control border px-3 py-2 text-xs font-semibold transition-colors ${
+                  active
+                    ? 'border-primary/20 bg-surface-raised text-primary shadow-design-sm'
+                    : 'border-transparent text-muted hover:bg-surface-raised'
                 }`}
               >
-                <CalendarCheck size={13} /> Đơn hôm nay ({todayCheckIns.length})
+                <Icon size={15} />
+                <span>{label}</span>
+                {active && <ArrowUpRight size={14} className="ml-auto" />}
               </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('history')}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 transition ${
-                  activeTab === 'history' ? 'bg-white text-red-700 shadow-xs' : 'text-gray-600'
-                }`}
-              >
-                <History size={13} /> Lịch sử Check-in ({historyLogs.length})
-              </button>
-            </div>
-          </div>
+            ))}
+          </nav>
 
-          <form onSubmit={handleSearchCheckIn} className="space-y-1.5">
-            <div className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-[12rem]">
-                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={checkInKeyword}
-                  onChange={(e) => {
-                    setCheckInKeyword(e.target.value);
-                    if (checkInSearchError) setCheckInSearchError(null);
-                  }}
-                  maxLength={50}
-                  placeholder="Nhập mã đơn (BK/POS) hoặc SĐT khách (2–50 ký tự)..."
-                  className={`w-full rounded-xl border py-2 pl-9 pr-3 text-sm focus:outline-none ${
-                    checkInSearchError
-                      ? 'border-red-400 bg-red-50/40 focus:border-red-600'
-                      : 'border-gray-200 bg-white focus:border-red-600'
-                  }`}
-                />
-              </div>
-              <select
-                value={checkInChannel}
-                onChange={(e) => setCheckInChannel(e.target.value as CheckInChannel)}
-                className="rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-xs font-semibold text-gray-700"
-                title="Kênh Check-in"
-              >
-                <option value="Manual">Tại quầy (Manual)</option>
-                <option value="Phone">Theo SĐT (Phone)</option>
-                <option value="QRCode">Quét mã (QRCode)</option>
-              </select>
-              <button
-                type="submit"
-                className="rounded-xl bg-red-700 px-3.5 py-2 text-xs font-semibold text-white hover:bg-red-800"
-              >
-                Tìm
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCheckInKeyword('');
-                  setCheckInSearchError(null);
-                  void loadCheckInData();
-                }}
-                className="inline-flex items-center gap-1 rounded-xl border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:border-red-200 hover:text-red-700"
-              >
-                <ListRestart size={14} /> Tất cả
-              </button>
+          <form onSubmit={handleSearchCheckIn} className="flex flex-wrap gap-2">
+            <div className="flex-1 min-w-[12rem]">
+              <Input
+                value={checkInKeyword}
+                onChange={(e) => setCheckInKeyword(e.target.value)}
+                placeholder="Nhập mã đơn hoặc SĐT khách..."
+              />
             </div>
-            {checkInSearchError && (
-              <p className="text-xs font-medium text-red-600">{checkInSearchError}</p>
-            )}
+            <Select
+              value={checkInChannel}
+              onChange={(e) => setCheckInChannel(e.target.value as CheckInChannel)}
+            >
+              <option value="Manual">Tại quầy (Manual)</option>
+              <option value="Phone">Theo SĐT (Phone)</option>
+              <option value="QRCode">Mã QR (QRCode)</option>
+            </Select>
+            <Button type="submit">
+              <Search size={15} /> Tìm
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCheckInKeyword('');
+                void loadCheckInData();
+              }}
+            >
+              <ListRestart size={15} />
+            </Button>
           </form>
 
           {activeTab === 'today' && (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-400 font-medium">Hiển thị:</span>
+            <div className="flex items-center gap-1.5 text-xs">
               {[
                 { key: 'all', label: `Tất cả (${todayCheckIns.length})` },
                 { key: 'pending', label: `Chờ Check-in (${stats.waitingCount})` },
@@ -752,10 +713,10 @@ export default function PosPage() {
                   key={item.key}
                   type="button"
                   onClick={() => setStatusFilter(item.key as typeof statusFilter)}
-                  className={`rounded-full px-3 py-1 font-semibold transition ${
+                  className={`rounded-control border px-3 py-1.5 font-semibold transition-colors ${
                     statusFilter === item.key
-                      ? 'bg-red-50 text-red-700 border border-red-200'
-                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                      ? 'border-primary/20 bg-surface text-primary'
+                      : 'border-border bg-surface-raised text-muted hover:text-foreground'
                   }`}
                 >
                   {item.label}
@@ -765,128 +726,109 @@ export default function PosPage() {
           )}
 
           {activeTab === 'today' ? (
-            <div className="max-h-[460px] overflow-y-auto overflow-x-auto rounded-xl border border-gray-100">
+            <div className="max-h-[440px] overflow-y-auto rounded-control border border-border">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-gray-50 text-left uppercase text-gray-500">
+                <thead className="sticky top-0 bg-surface text-left uppercase text-muted">
                   <tr>
                     <th className="px-3 py-2.5 font-semibold">Giờ / Sân</th>
                     <th className="px-3 py-2.5 font-semibold">Mã đơn</th>
                     <th className="px-3 py-2.5 font-semibold">Khách hàng</th>
-                    <th className="px-3 py-2.5 font-semibold text-right">Check-in</th>
+                    <th className="px-3 py-2.5 font-semibold text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingCheckIns && (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
-                        Đang tải danh sách check-in...
-                      </td>
-                    </tr>
+                    <tr><td colSpan={4} className="px-3 py-8 text-center text-muted">Đang tải...</td></tr>
                   )}
                   {!loadingCheckIns && filteredTodayCheckIns.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
-                        Không có đơn đặt sân nào khớp bộ lọc hôm nay.
-                      </td>
-                    </tr>
+                    <tr><td colSpan={4} className="px-3 py-8 text-center text-muted">Không có đơn nào.</td></tr>
                   )}
                   {!loadingCheckIns &&
-                    filteredTodayCheckIns.map((row) => {
-                      const isJustCreated =
-                        lastCreatedBookingCode && row.bookingCode === lastCreatedBookingCode;
-                      return (
-                        <tr
-                          key={row.bookingDetailId}
-                          className={`border-t border-gray-100 transition ${
-                            isJustCreated ? 'bg-amber-50/70' : 'hover:bg-gray-50/60'
-                          }`}
-                        >
-                          <td className="px-3 py-2.5 whitespace-nowrap">
-                            <span className="font-bold text-red-700">
-                              {hhmm(row.startTime)}–{hhmm(row.endTime)}
-                            </span>
-                            <span className="block font-medium text-gray-700">{row.courtName}</span>
-                          </td>
-                          <td className="px-3 py-2.5 font-mono text-gray-600">
-                            {row.bookingCode}
-                            {isJustCreated && (
-                              <span className="ml-1 rounded bg-amber-200 px-1.5 py-0.5 text-[10px] font-sans font-bold text-amber-900">
-                                Mới
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <span className="font-semibold text-gray-800">{row.customerName}</span>
-                            <span className="block text-gray-400">{row.phone ?? '—'}</span>
-                          </td>
-                          <td className="px-3 py-2.5 text-right whitespace-nowrap">
-                            {row.checkedIn ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
-                                <CircleCheck size={13} /> Đã vào {row.checkedInAt ? toLocalTime(row.checkedInAt) : ''}
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => void handleQuickCheckIn(row)}
-                                className="inline-flex items-center gap-1 rounded-lg bg-red-700 px-3 py-1.5 font-semibold text-white shadow-2xs hover:bg-red-800"
-                              >
-                                <LogIn size={13} /> Check-in
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    filteredTodayCheckIns.map((row) => (
+                      <tr
+                        key={row.bookingDetailId}
+                        onClick={() => setSelectedBookingId(row.bookingId)}
+                        className="cursor-pointer border-t border-border transition-colors hover:bg-surface"
+                      >
+                        <td className="px-3 py-2.5 whitespace-nowrap">
+                          <span className="font-semibold text-primary">
+                            <Clock size={12} className="inline mr-1" />
+                            {hhmm(row.startTime)}–{hhmm(row.endTime)}
+                          </span>
+                          <span className="block text-foreground">{row.courtName}</span>
+                        </td>
+                        <td className="px-3 py-2.5 font-mono font-semibold text-foreground underline decoration-dotted">
+                          {row.bookingCode}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="font-semibold text-foreground">{row.customerName}</span>
+                          <span className="block text-muted">{row.phone ?? '—'}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          {row.checkedIn ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedBookingId(row.bookingId)}
+                            >
+                              <ExternalLink size={12} />
+                              {row.bookingStatus === 'Completed' ? 'Đã Check-out' : 'Check-out'}
+                            </Button>
+                          ) : (
+                            <Button size="sm" onClick={() => void handleQuickCheckIn(row)}>
+                              <LogIn size={12} /> Check-in
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <div className="max-h-[460px] overflow-y-auto overflow-x-auto rounded-xl border border-gray-100">
+            <div className="max-h-[440px] overflow-y-auto rounded-control border border-border">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-gray-50 text-left uppercase text-gray-500">
+                <thead className="sticky top-0 bg-surface text-left uppercase text-muted">
                   <tr>
                     <th className="px-3 py-2.5 font-semibold">Lúc vào</th>
                     <th className="px-3 py-2.5 font-semibold">Khách / Mã đơn</th>
                     <th className="px-3 py-2.5 font-semibold">Sân / Ca giờ</th>
-                    <th className="px-3 py-2.5 font-semibold">Kênh / Lễ tân</th>
+                    <th className="px-3 py-2.5 font-semibold text-right">Đơn</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {loadingCheckIns && (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
-                        Đang tải lịch sử check-in...
-                      </td>
-                    </tr>
-                  )}
-                  {!loadingCheckIns && historyLogs.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-gray-500">
-                        Chưa có lượt check-in nào được ghi nhận hôm nay.
-                      </td>
-                    </tr>
-                  )}
                   {!loadingCheckIns &&
                     historyLogs.map((log) => (
-                      <tr key={log.checkInLogId} className="border-t border-gray-100 hover:bg-gray-50/60">
-                        <td className="px-3 py-2.5 font-semibold text-emerald-700 whitespace-nowrap">
+                      <tr
+                        key={log.checkInLogId}
+                        onClick={() => setSelectedBookingId(log.bookingId)}
+                        className="cursor-pointer border-t border-border transition-colors hover:bg-surface"
+                      >
+                        <td className="px-3 py-2.5 font-semibold text-foreground whitespace-nowrap">
                           {toLocalTime(log.checkInAt)}
                         </td>
                         <td className="px-3 py-2.5">
-                          <span className="font-semibold text-gray-900">{log.customerName}</span>
-                          <span className="block font-mono text-gray-400">{log.bookingCode}</span>
+                          <span className="font-semibold text-foreground">{log.customerName}</span>
+                          <span className="block font-mono font-semibold text-primary underline decoration-dotted">
+                            {log.bookingCode}
+                          </span>
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="font-medium text-gray-800">{log.courtName}</span>
-                          <span className="block text-gray-500">
+                          <span className="font-medium text-foreground">{log.courtName}</span>
+                          <span className="block text-muted">
                             {hhmm(log.startTime)}–{hhmm(log.endTime)}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5">
-                          <span className="rounded bg-gray-100 px-1.5 py-0.5 font-semibold text-gray-700">
-                            {log.channel}
-                          </span>
-                          <span className="block text-gray-400 mt-0.5">{log.staffName}</span>
+                        <td className="px-3 py-2.5 text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedBookingId(log.bookingId)}
+                          >
+                            <ExternalLink size={12} /> Mở đơn
+                          </Button>
                         </td>
                       </tr>
                     ))}
@@ -896,15 +838,16 @@ export default function PosPage() {
           )}
         </section>
       </div>
-    </div>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className={labelClass}>{label}</span>
-      {children}
-    </label>
+      <ReceptionOrderModal
+        bookingId={selectedBookingId}
+        defaultChannel={checkInChannel}
+        onClose={() => setSelectedBookingId(null)}
+        onUpdated={() => {
+          setAvailabilityReloadKey((k) => k + 1);
+          void loadCheckInData();
+        }}
+      />
+    </div>
   );
 }

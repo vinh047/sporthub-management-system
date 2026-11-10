@@ -13,7 +13,12 @@ public class PosController(IPosService posService, ICheckInService checkInServic
 {
     private bool IsAdmin => CurrentUserRole == "ADMIN";
 
-    /// <summary>Bán sân tại quầy cho khách vãng lai (đơn xác nhận ngay)</summary>
+    /// <summary>Tìm kiếm khách thành viên theo SĐT hoặc tên tại quầy POS</summary>
+    [HttpGet("customers")]
+    public async Task<ActionResult<BaseResponse<List<PosCustomerDto>>>> SearchCustomers([FromQuery] string keyword)
+        => Ok(BaseResponse<List<PosCustomerDto>>.Ok(await posService.SearchCustomersAsync(keyword)));
+
+    /// <summary>Bán sân tại quầy cho khách vãng lai hoặc thành viên (đơn xác nhận ngay)</summary>
     [HttpPost("bookings")]
     public async Task<ActionResult<BaseResponse<PosBookingResponse>>> CreateBooking([FromBody] PosBookingRequest request)
     {

@@ -19,6 +19,7 @@ import PricingPage from './page/admin/PricingPage';
 import PromotionsPage from './page/admin/PromotionsPage';
 import AdminTournamentsPage from './page/admin/AdminTournamentsPage';
 import ReportsPage from './page/admin/ReportsPage';
+import ReceptionOrderModal from './components/ReceptionOrderModal';
 import VouchersPage from './page/user/VouchersPage';
 import TournamentHubPage, { LegacyMyTournamentsRedirect } from './page/user/TournamentHubPage';
 
@@ -73,6 +74,7 @@ function App() {
         >
           <Route index element={<StaffHomePage />} />
           <Route path="reception" element={<ReceptionPage />} />
+          <Route path="reception/orders/:bookingId" element={<ReceptionOrderModal standalone />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="tournaments" element={<AdminTournamentsPage />} />
@@ -90,6 +92,7 @@ function App() {
         >
           <Route index element={<AdminHomePage />} />
           <Route path="reception" element={<ReceptionPage />} />
+          <Route path="reception/orders/:bookingId" element={<ReceptionOrderModal standalone />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="facilities" element={<FacilitiesPage />} />

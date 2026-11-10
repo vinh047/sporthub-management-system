@@ -2,6 +2,7 @@ using SportHub.Application.DTOs.Pos;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Booking;
+using SportHub.Domain.Entities.Loyalty;
 using SportHub.Domain.Entities.Payment;
 using SportHub.Domain.Enums;
 using SportHub.Domain.Exceptions;
@@ -14,6 +15,22 @@ public class PosService(
     IPricingService pricing,
     ICourtStatusNotifier? courtStatusNotifier = null) : IPosService
 {
+    public async Task<List<PosCustomerDto>> SearchCustomersAsync(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword) || keyword.Trim().Length < 2)
+            return [];
+
+        var users = await uow.Users.SearchByPhoneOrNameAsync(keyword.Trim());
+        return users.Select(u => new PosCustomerDto(
+            u.Id,
+            u.FullName,
+            u.PhoneNumber,
+            u.PlayerProfile?.CurrentTier ?? "Bronze",
+            u.PlayerProfile?.LoyaltyPoints ?? 0,
+            u.PlayerProfile?.ReputationScore ?? 100
+        )).ToList();
+    }
+
     public async Task<PosBookingResponse> CreateBookingAsync(PosBookingRequest request, int staffUserId, bool isAdmin)
     {
         var errors = new List<string>();
@@ -37,7 +54,7 @@ public class PosService(
         if (string.IsNullOrWhiteSpace(request.GuestName))
             errors.Add("Nhập tên khách.");
         else if (request.GuestName.Trim().Length is < 2 or > 100)
-            errors.Add("Tên khách vãng lai phải từ 2 đến 100 ký tự.");
+            errors.Add("Tên khách phải từ 2 đến 100 ký tự.");
 
         if (string.IsNullOrWhiteSpace(request.GuestPhone))
             errors.Add("Nhập số điện thoại khách.");
@@ -63,7 +80,6 @@ public class PosService(
         if (!court.IsActive)
             throw new ValidationException(["Sân đang ngừng hoạt động."]);
 
-        // Staff chỉ bán sân của cơ sở mình
         if (!isAdmin)
         {
             var staffFacilityId = await uow.CheckIns.GetStaffFacilityIdAsync(staffUserId);
@@ -71,7 +87,6 @@ public class PosService(
                 throw new ForbiddenException("Bạn không được phân công ở cơ sở này.");
         }
 
-        // Đảm bảo bảng TimeSlots (17 ca giờ chuẩn) và PaymentMethods đã được khởi tạo trong DB
         var allTimeSlots = await uow.Facilities.GetTimeSlotsAsync();
         var resolvedSlotIds = new List<int>();
         var slotPrices = new Dictionary<int, decimal>();
@@ -94,11 +109,12 @@ public class PosService(
         var booking = new BookingEntity
         {
             BookingCode = $"POS{DateTime.Now:yyMMddHHmmss}",
+            UserId = request.CustomerUserId > 0 ? request.CustomerUserId : null,
             GuestName = (request.GuestName ?? string.Empty).Trim(),
             GuestPhone = (request.GuestPhone ?? string.Empty).Trim(),
             TotalAmount = total,
             FinalAmount = total,
-            BookingStatus = BookingStatus.Confirmed,   // POS thu tiền tại quầy nên xác nhận ngay
+            BookingStatus = BookingStatus.Confirmed,
             CreatedByStaffId = staffUserId
         };
 
@@ -122,9 +138,36 @@ public class PosService(
             StaffVerifierId = staffUserId
         });
 
-        // EF lưu Booking + Details + PaymentTransaction trong cùng 1 transaction
         await uow.Bookings.AddAsync(booking);
         await uow.SaveChangesAsync();
+
+        // Nếu gắn với tài khoản thành viên đã đăng ký -> cộng điểm tích lũy & lưu lịch sử ngay
+        if (booking.UserId.HasValue && total > 0m)
+        {
+            var profile = await uow.CheckIns.GetOrCreatePlayerProfileAsync(booking.UserId.Value);
+            if (profile is not null)
+            {
+                var earnedPoints = Math.Max(1, (int)Math.Floor(total / 10000m));
+                profile.LoyaltyPoints += earnedPoints;
+                profile.CurrentTier = profile.LoyaltyPoints switch
+                {
+                    >= 1000 => "Platinum",
+                    >= 500 => "Gold",
+                    >= 200 => "Silver",
+                    _ => "Bronze"
+                };
+
+                await uow.CheckIns.AddLoyaltyHistoryAsync(new LoyaltyHistory
+                {
+                    UserId = booking.UserId.Value,
+                    PointsChanged = earnedPoints,
+                    Reason = $"Đặt sân & thanh toán tại quầy POS ({booking.BookingCode})",
+                    RelatedBookingId = booking.Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await uow.SaveChangesAsync();
+            }
+        }
 
         if (courtStatusNotifier is not null)
         {
