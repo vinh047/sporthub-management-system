@@ -83,8 +83,9 @@ public class BookingRepository(SportHubDbContext context)
             d.TimeSlotId == slot.Id &&
             ((d.Booking.BookingStatus == BookingStatus.Held &&
                 (d.Booking.HoldExpiresAt == null || d.Booking.HoldExpiresAt > now)) ||
-             d.Booking.BookingStatus == BookingStatus.Confirmed))
-            .OrderByDescending(d => d.Booking.BookingStatus == BookingStatus.Confirmed)
+             d.Booking.BookingStatus == BookingStatus.Confirmed ||
+             d.Booking.BookingStatus == BookingStatus.Completed))
+            .OrderByDescending(d => d.Booking.BookingStatus != BookingStatus.Held)
             .Select(d => d.Booking.BookingStatus == BookingStatus.Held ? "Held" : "Confirmed")
             .FirstOrDefaultAsync();
         if (occupiedStatus is not null) return occupiedStatus;

@@ -1,12 +1,10 @@
 import TournamentBracketPanel from '../../components/tournament/TournamentBracketPanel';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
-  Award, Building, Calendar, CheckCircle2, CircleCheck, Clock, Crown, FileText,
-  LoaderCircle, Plus, Search, ShieldAlert, ShieldCheck, Swords, Trash2,
-  Trophy, UserPlus, Users, X,
+  Building, Calendar, Crown, FileText, Plus, Swords, Trash2, Trophy, UserPlus, Users,
 } from 'lucide-react';
 import { PublicSiteFooter, PublicSiteHeader } from '../../components/PublicSiteChrome';
 import { authApi } from '../../api/authApi';
@@ -18,18 +16,17 @@ import { tournamentApi } from '../../api/tournamentApi';
 import type { TournamentDetailDto, TournamentDto } from '../../api/tournamentApi';
 import { useAuthStore } from '../../store/authStore';
 import TournamentTeamPayment from './TournamentTeamPayment';
-import { Button, Dialog } from '../../components/ui';
-import { tournamentTeamStatusLabels } from '../../utils/tournamentStatus';
+import { Badge, Button, Dialog, Input, Select } from '../../components/ui';
+import type { BadgeVariant } from '../../components/ui';
+import { EmptyState, LoadingState } from '../../components/shared';
+import { tournamentStatusLabels, tournamentTeamStatusLabels } from '../../utils/tournamentStatus';
 
-const inputClass =
-  'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-red-600 focus:outline-none focus:ring-4 focus:ring-red-600/10';
-
-const STATUS_META: Record<string, { label: string; badgeClass: string }> = {
-  Draft: { label: 'Sắp công bố', badgeClass: 'bg-gray-100 text-gray-700' },
-  OpenReg: { label: 'Đang mở đăng ký', badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
-  DrawCompleted: { label: 'Đã bốc thăm nhánh đấu', badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200' },
-  InProgress: { label: 'Đang diễn ra', badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200' },
-  Finished: { label: 'Đã kết thúc', badgeClass: 'bg-slate-100 text-slate-600' },
+const STATUS_BADGE: Record<string, BadgeVariant> = {
+  Draft: 'neutral',
+  OpenReg: 'primary',
+  DrawCompleted: 'neutral',
+  InProgress: 'primary',
+  Finished: 'neutral',
 };
 
 const FORMAT_LABEL: Record<string, string> = {
@@ -59,20 +56,18 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
   const [loading, setLoading] = useState(true);
   const [meProfile, setMeProfile] = useState<MeResponse | null>(null);
 
-  // Modal Xem điều lệ, Danh sách đội & Lịch thi đấu
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<'rules' | 'teams' | 'matches'>('rules');
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<TournamentDetailDto | null>(null);
 
-  // Modal Đăng ký đội
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [registerTarget, setRegisterTarget] = useState<TournamentDto | null>(null);
   const [teamName, setTeamName] = useState('');
   const [members, setMembers] = useState<Array<{ name: string; phone: string }>>([{ name: '', phone: '' }]);
   const [agreedRules, setAgreedRules] = useState(true);
   const [submittingTeam, setSubmittingTeam] = useState(false);
-  const [teamNameError, setTeamNameError] = useState<string | null>(null);
+  const [teamNameError, setTeamNameError] = useState<string | undefined>();
   const [memberErrors, setMemberErrors] = useState<Record<number, { name?: string; phone?: string }>>({});
   const [agreedError, setAgreedError] = useState<string | null>(null);
   const [submitErrorBanner, setSubmitErrorBanner] = useState<string | null>(null);
@@ -84,34 +79,39 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
     if (!result) return;
     let active = true;
     const timer = window.setTimeout(() => {
-      setPaymentNotice(result === 'processing'
-        ? 'Đã quay về từ VNPay. Xem trạng thái thanh toán được hệ thống xác nhận trong thẻ đội của bạn.'
-        : result === 'failed'
-          ? 'Giao dịch VNPay chưa thành công hoặc đã bị hủy. Kiểm tra trạng thái của đội trước khi thanh toán lại.'
-          : 'Không xác thực được kết quả trả về từ VNPay. Vui lòng mở danh sách đội để kiểm tra trạng thái.');
+      setPaymentNotice(
+        result === 'processing'
+          ? 'Đã quay về từ VNPay. Xem trạng thái thanh toán trong thẻ đội của bạn.'
+          : 'Giao dịch VNPay chưa thành công hoặc đã bị hủy. Vui lòng kiểm tra trạng thái của đội.',
+      );
       const tournamentId = Number(params.get('tournamentId'));
       const teamId = Number(params.get('teamId'));
-      if (!isAuthenticated || !Number.isSafeInteger(tournamentId) || tournamentId <= 0 || !Number.isSafeInteger(teamId) || teamId <= 0) return;
+      if (!isAuthenticated || tournamentId <= 0 || teamId <= 0) return;
       setSelectedDetail(null);
       setDetailModalOpen(true);
       setDetailTab('teams');
       setDetailLoading(true);
-      void tournamentApi.getById(tournamentId).then((detail) => {
-        if (!active) return;
-        setSelectedDetail(detail);
-        params.delete('paymentResult');
-        params.delete('tournamentId');
-        params.delete('teamId');
-        navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
-      }).catch((err) => {
-        if (!active) return;
-        setPaymentNotice(getErrorMessage(err));
-        setDetailModalOpen(false);
-      }).finally(() => {
-        if (active) setDetailLoading(false);
-      });
+      void tournamentApi
+        .getById(tournamentId)
+        .then((detail) => {
+          if (!active) return;
+          setSelectedDetail(detail);
+          params.delete('paymentResult');
+          params.delete('tournamentId');
+          params.delete('teamId');
+          navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+        })
+        .catch((err) => {
+          if (!active) return;
+          setPaymentNotice(getErrorMessage(err));
+          setDetailModalOpen(false);
+        })
+        .finally(() => active && setDetailLoading(false));
     }, 0);
-    return () => { active = false; window.clearTimeout(timer); };
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [isAuthenticated, location.pathname, location.search, navigate]);
 
   useEffect(() => {
@@ -165,24 +165,13 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
     );
   }, [tournaments, searchQuery]);
 
-  const summaryStats = useMemo(() => {
-    const openCount = tournaments.filter((t) => t.status === 'OpenReg').length;
-    const totalTeams = tournaments.reduce((sum, t) => sum + t.registeredTeamsCount, 0);
-    return {
-      total: tournaments.length,
-      openCount,
-      totalTeams,
-    };
-  }, [tournaments]);
-
   const openDetailModal = async (tournamentId: number, initialTab: 'rules' | 'teams' | 'matches' = 'rules') => {
     setDetailTab(initialTab);
     setDetailModalOpen(true);
     setDetailLoading(true);
     setSelectedDetail(null);
     try {
-      const detail = await tournamentApi.getById(tournamentId);
-      setSelectedDetail(detail);
+      setSelectedDetail(await tournamentApi.getById(tournamentId));
     } catch (err) {
       toast.error(getErrorMessage(err));
       setDetailModalOpen(false);
@@ -193,7 +182,7 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
 
   const openRegisterModal = (tournament: TournamentDto) => {
     if (!isAuthenticated) {
-      toast.error('Vui lòng đăng nhập tài khoản để đăng ký đội tham gia giải đấu.');
+      toast.error('Vui lòng đăng nhập để đăng ký đội tham gia giải đấu.');
       navigate('/login');
       return;
     }
@@ -201,51 +190,27 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
     setTeamName('');
     setMembers([{ name: '', phone: '' }]);
     setAgreedRules(true);
-    setTeamNameError(null);
+    setTeamNameError(undefined);
     setMemberErrors({});
     setAgreedError(null);
     setSubmitErrorBanner(null);
     setRegisterModalOpen(true);
   };
 
-  const handleAddPhoneField = () => {
-    if (members.length >= 8) {
-      toast.error('Mỗi đội chỉ được thêm tối đa 8 vận động viên đi kèm.');
-      return;
-    }
-    setMembers((prev) => [...prev, { name: '', phone: '' }]);
-  };
-  const handleRemovePhoneField = (idx: number) => {
-    setMembers((prev) => prev.filter((_, i) => i !== idx));
-    setMemberErrors((prev) => {
-      const next = { ...prev };
-      delete next[idx];
-      return next;
-    });
-  };
   const handleMemberChange = (idx: number, field: 'name' | 'phone', value: string) => {
     setMembers((prev) => prev.map((m, i) => (i === idx ? { ...m, [field]: value } : m)));
-    setMemberErrors((prev) => {
-      if (!prev[idx]?.[field]) return prev;
-      return {
-        ...prev,
-        [idx]: { ...prev[idx], [field]: undefined },
-      };
-    });
+    setMemberErrors((prev) => ({ ...prev, [idx]: { ...prev[idx], [field]: undefined } }));
     setSubmitErrorBanner(null);
   };
 
   const validateRegisterForm = (): boolean => {
     let valid = true;
     const trimmedTeam = teamName.trim();
-    if (!trimmedTeam) {
-      setTeamNameError('Vui lòng nhập tên đội thi đấu.');
-      valid = false;
-    } else if (trimmedTeam.length < 2 || trimmedTeam.length > 80) {
+    if (!trimmedTeam || trimmedTeam.length < 2 || trimmedTeam.length > 80) {
       setTeamNameError('Tên đội thi đấu phải từ 2 đến 80 ký tự.');
       valid = false;
     } else {
-      setTeamNameError(null);
+      setTeamNameError(undefined);
     }
 
     const nextMemberErrors: Record<number, { name?: string; phone?: string }> = {};
@@ -258,52 +223,36 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
       const rowErr: { name?: string; phone?: string } = {};
 
       if (cleanName && !cleanPhone) {
-        rowErr.phone = 'Vui lòng nhập số điện thoại cho vận động viên này.';
+        rowErr.phone = 'Nhập SĐT cho vận động viên này.';
         valid = false;
       }
-
       if (cleanName && (cleanName.length < 2 || cleanName.length > 80)) {
-        rowErr.name = 'Họ tên VĐV phải từ 2 đến 80 ký tự.';
+        rowErr.name = 'Họ tên VĐV từ 2–80 ký tự.';
         valid = false;
       }
-
       if (cleanPhone) {
         if (!phoneRegex.test(cleanPhone)) {
-          rowErr.phone = 'SĐT không hợp lệ (cần 9–11 chữ số, bắt đầu bằng số 0).';
+          rowErr.phone = 'SĐT không hợp lệ (9–11 chữ số, bắt đầu bằng 0).';
           valid = false;
         } else if (seenPhones.has(cleanPhone)) {
-          rowErr.phone = 'Số điện thoại này bị trùng với vận động viên khác trong đội.';
+          rowErr.phone = 'SĐT bị trùng trong đội.';
           valid = false;
         } else {
           seenPhones.add(cleanPhone);
         }
       }
-
-      if (rowErr.name || rowErr.phone) {
-        nextMemberErrors[idx] = rowErr;
-      }
+      if (rowErr.name || rowErr.phone) nextMemberErrors[idx] = rowErr;
     });
 
     setMemberErrors(nextMemberErrors);
-
-    if (!agreedRules) {
-      setAgreedError('Vui lòng xác nhận đồng ý với điều lệ giải đấu.');
-      valid = false;
-    } else {
-      setAgreedError(null);
-    }
-
+    setAgreedError(agreedRules ? null : 'Vui lòng đồng ý với điều lệ giải đấu.');
+    if (!agreedRules) valid = false;
     return valid;
   };
 
   const handleRegisterSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!registerTarget) return;
-    setSubmitErrorBanner(null);
-    if (!validateRegisterForm()) {
-      toast.error('Vui lòng kiểm tra lại thông tin đăng ký đội.');
-      return;
-    }
+    if (!registerTarget || !validateRegisterForm()) return;
     setSubmittingTeam(true);
     try {
       const validMembers = members
@@ -314,7 +263,7 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
         memberPhones: validMembers.map((m) => m.phone),
         memberNames: validMembers.map((m) => m.name),
       });
-      toast.success(res.message ?? 'Đăng ký đội tham gia giải đấu thành công!');
+      toast.success(res.message ?? 'Đăng ký đội thành công!');
       setRegisterModalOpen(false);
       navigate('/player/tournaments?tab=mine');
     } catch (err) {
@@ -330,111 +279,65 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
   const captainEligible = captainRep >= 60;
 
   const content = (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6">
       {paymentNotice && (
         <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-control border border-border bg-surface p-4 text-sm text-foreground">
           <p>{paymentNotice}</p>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setPaymentNotice(null)}>Đóng thông báo</Button>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setPaymentNotice(null)}>Đóng</Button>
         </div>
       )}
-      {/* Banner Cổng thông tin Giải đấu */}
-      {!embedded && <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-red-700 via-red-800 to-[#2b0808] p-8 text-white shadow-lg">
-        <div className="absolute -right-12 -top-12 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative flex flex-wrap items-center justify-between gap-6">
-          <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-red-100">
-              <Trophy size={14} /> Cổng thông tin Giải đấu SportHub · UC18 & UC19
-            </span>
-            <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
-              Cổng thông tin Giải đấu & Đăng ký Đội
-            </h1>
-            <p className="mt-2 text-sm text-red-100/90 sm:text-base">
-              Xem danh sách các giải đấu đang mở, tra cứu điều lệ & giải thưởng, lập đội cùng đồng đội và theo dõi lịch thi đấu trực tiếp.
-            </p>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-xs text-center">
-            <div className="px-2">
-              <p className="text-2xl font-extrabold">{summaryStats.total}</p>
-              <p className="text-[11px] text-red-100/80">Giải đấu</p>
-            </div>
-            <div className="border-x border-white/15 px-3">
-              <p className="text-2xl font-extrabold text-emerald-300">{summaryStats.openCount}</p>
-              <p className="text-[11px] text-red-100/80">Đang mở ĐK</p>
-            </div>
-            <div className="px-2">
-              <p className="text-2xl font-extrabold">{summaryStats.totalTeams}</p>
-              <p className="text-[11px] text-red-100/80">Đội tham dự</p>
-            </div>
+      {embedded && (
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Khám phá giải đấu</h2>
+            <p className="mt-1 text-sm text-muted">Chọn giải phù hợp với đội của bạn.</p>
           </div>
+          <span className="text-sm text-muted">{loading ? 'Đang tải…' : `${filteredTournaments.length} giải đấu`}</span>
         </div>
-      </section>
+      )}
 
-      }
-      {embedded && <div className="flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-xl font-bold text-foreground">Khám phá giải đấu</h2><p className="mt-1 text-sm text-muted">Chọn giải phù hợp với đội của bạn.</p></div><span className="text-sm text-muted">{loading ? 'Đang tải…' : `${filteredTournaments.length} giải đấu`}</span></div>}
       {/* Bộ lọc Giải đấu */}
-      <section className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase text-gray-500">Tìm tên giải đấu</span>
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Nhập tên giải đấu..."
-              className={`${inputClass} pl-9`}
-            />
-          </div>
-        </label>
-
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase text-gray-500">Cơ sở tổ chức</span>
-          <select value={facilityId} onChange={(e) => setFacilityId(e.target.value)} className={inputClass}>
-            <option value="">Tất cả cơ sở</option>
-            {facilities.map((f) => (
-              <option key={f.id} value={f.id}>{f.name}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase text-gray-500">Bộ môn thi đấu</span>
-          <select value={sportId} onChange={(e) => setSportId(e.target.value)} className={inputClass}>
-            <option value="">Tất cả môn thể thao</option>
-            {sports.map((s) => (
-              <option key={s.id} value={s.id}>{s.sportName}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase text-gray-500">Trạng thái giải</span>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={inputClass}>
-            <option value="">Tất cả trạng thái</option>
-            <option value="OpenReg">Đang mở đăng ký</option>
-            <option value="InProgress">Đang diễn ra</option>
-            <option value="DrawCompleted">Đã bốc thăm</option>
-            <option value="Finished">Đã kết thúc</option>
-          </select>
-        </label>
+      <section className="grid gap-3 rounded-card border border-border bg-surface-raised p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Input
+          label="Tìm tên giải đấu"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Nhập tên giải đấu..."
+        />
+        <Select label="Cơ sở tổ chức" value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
+          <option value="">Tất cả cơ sở</option>
+          {facilities.map((f) => (
+            <option key={f.id} value={f.id}>{f.name}</option>
+          ))}
+        </Select>
+        <Select label="Bộ môn thi đấu" value={sportId} onChange={(e) => setSportId(e.target.value)}>
+          <option value="">Tất cả môn thể thao</option>
+          {sports.map((s) => (
+            <option key={s.id} value={s.id}>{s.sportName}</option>
+          ))}
+        </Select>
+        <Select label="Trạng thái giải" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Tất cả trạng thái</option>
+          <option value="OpenReg">Đang mở đăng ký</option>
+          <option value="InProgress">Đang diễn ra</option>
+          <option value="DrawCompleted">Đã bốc thăm</option>
+          <option value="Finished">Đã kết thúc</option>
+        </Select>
       </section>
 
       {/* Danh sách Giải đấu */}
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-gray-500">
-          <LoaderCircle size={24} className="mr-2 animate-spin text-red-600" />
-          Đang tải danh sách giải đấu...
-        </div>
+        <LoadingState label="Đang tải danh sách giải đấu…" />
       ) : filteredTournaments.length === 0 ? (
-        <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center shadow-sm">
-          <Trophy size={40} className="mx-auto text-gray-300" />
-          <p className="mt-3 font-semibold text-gray-800">Không tìm thấy giải đấu nào phù hợp</p>
-          <p className="mt-1 text-sm text-gray-500">Hãy thử đổi bộ lọc cơ sở, môn thể thao hoặc từ khóa tìm kiếm.</p>
-        </div>
+        <EmptyState
+          icon={Trophy}
+          title="Không tìm thấy giải đấu nào phù hợp"
+          description="Hãy thử đổi bộ lọc cơ sở, môn thể thao hoặc từ khóa tìm kiếm."
+        />
       ) : (
         <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filteredTournaments.map((t) => {
-            const meta = STATUS_META[t.status] ?? { label: t.status, badgeClass: 'bg-gray-100 text-gray-700' };
             const isFull = t.registeredTeamsCount >= t.maxTeams;
             const canRegister = t.status === 'OpenReg' && !isFull;
             const progressPct = Math.min(100, Math.round((t.registeredTeamsCount / Math.max(1, t.maxTeams)) * 100));
@@ -446,91 +349,75 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
               >
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-700">
-                      <Swords size={14} /> {t.sportName}
-                    </span>
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta.badgeClass}`}>
-                      {meta.label}
-                    </span>
+                    <Badge variant="primary">
+                      <Swords size={13} className="mr-1" /> {t.sportName}
+                    </Badge>
+                    <Badge variant={STATUS_BADGE[t.status] ?? 'neutral'}>
+                      {tournamentStatusLabels[t.status] ?? t.status}
+                    </Badge>
                   </div>
 
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{t.name}</h2>
-                    <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
-                      <Building size={15} className="text-gray-400" /> {t.facilityName}
+                    <h3 className="text-xl font-bold text-foreground">{t.name}</h3>
+                    <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+                      <Building size={15} /> {t.facilityName}
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 rounded-xl bg-gray-50 p-3.5 text-xs text-gray-600">
+                  <div className="grid grid-cols-2 gap-3 rounded-control border border-border bg-surface p-3.5 text-xs">
                     <div>
-                      <span className="block text-gray-400">Thể thức thi đấu</span>
-                      <span className="font-semibold text-gray-800">
+                      <span className="block text-muted">Thể thức</span>
+                      <span className="font-semibold text-foreground">
                         {FORMAT_LABEL[t.tournamentType] ?? t.tournamentType}
                       </span>
                     </div>
                     <div>
-                      <span className="block text-gray-400">Lệ phí đăng ký / đội</span>
-                      <span className="font-bold text-red-700">
+                      <span className="block text-muted">Lệ phí / đội</span>
+                      <span className="font-bold text-primary">
                         {t.entryFee > 0 ? `${t.entryFee.toLocaleString('vi-VN')} đ` : 'Miễn phí'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={14} className="text-gray-400" />
-                      <span>Thi đấu: <strong>{formatDate(t.startDate)}</strong></span>
+                    <div className="flex items-center gap-1.5 text-muted">
+                      <Calendar size={14} />
+                      <span>Thi đấu: <strong className="text-foreground">{formatDate(t.startDate)}</strong></span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={14} className="text-gray-400" />
-                      <span>Hạn ĐK: <strong>{formatDate(t.registrationDeadline)}</strong></span>
+                    <div className="flex items-center gap-1.5 text-muted">
+                      <span>Hạn ĐK: <strong className="text-foreground">{formatDate(t.registrationDeadline)}</strong></span>
                     </div>
                   </div>
 
-                  {t.prizeDescription && (
-                    <div className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-xs text-amber-900">
-                      <Award size={16} className="mt-0.5 shrink-0 text-amber-600" />
-                      <p className="line-clamp-2">{t.prizeDescription}</p>
-                    </div>
-                  )}
-
-                  {/* Tiến độ số đội đăng ký */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1 font-medium text-gray-600">
+                      <span className="flex items-center gap-1 font-medium text-muted">
                         <Users size={14} /> Số đội đã đăng ký
                       </span>
-                      <span className="font-bold text-gray-900">
-                        {t.registeredTeamsCount} / {t.maxTeams} đội ({t.maxTeams - t.registeredTeamsCount} suất trống)
+                      <span className="font-bold text-foreground">
+                        {t.registeredTeamsCount} / {t.maxTeams} đội
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                      <div
-                        className={`h-full rounded-full transition-all ${isFull ? 'bg-red-600' : 'bg-emerald-500'}`}
-                        style={{ width: `${progressPct}%` }}
-                      />
+                    <div className="h-2 overflow-hidden rounded-pill bg-surface border border-border">
+                      <div className="h-full bg-primary transition-all" style={{ width: `${progressPct}%` }} />
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4">
-                  <button
+                <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                  <Button
                     type="button"
+                    variant="outline"
+                    className="flex-1"
                     onClick={() => void openDetailModal(t.id, 'rules')}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-red-200 hover:text-red-700"
                   >
-                    <FileText size={16} /> Xem điều lệ & Đội ({t.registeredTeamsCount})
-                  </button>
-
+                    <FileText size={15} /> Chi tiết ({t.registeredTeamsCount})
+                  </Button>
                   {canRegister ? (
-                    <button
-                      type="button"
-                      onClick={() => openRegisterModal(t)}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-800"
-                    >
-                      <UserPlus size={16} /> Đăng ký đội
-                    </button>
+                    <Button type="button" className="flex-1" onClick={() => openRegisterModal(t)}>
+                      <UserPlus size={15} /> Đăng ký đội
+                    </Button>
                   ) : (
-                    <span className="rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-medium text-gray-500">
-                      {isFull ? 'Đã đủ số đội' : 'Đã đóng đăng ký'}
-                    </span>
+                    <Badge variant="neutral" className="py-2 px-3">
+                      {isFull ? 'Đã đủ đội' : 'Đóng đăng ký'}
+                    </Badge>
                   )}
                 </div>
               </article>
@@ -539,389 +426,253 @@ export default function TournamentsPage({ embedded = false }: { embedded?: boole
         </div>
       )}
 
-      {/* Modal Xem Điều lệ, Danh sách Đội & Lịch thi đấu */}
-      {detailModalOpen && (
-        <Dialog
-          open={detailModalOpen}
-          onOpenChange={setDetailModalOpen}
-          title={selectedDetail?.name ?? 'SportHub'}
-          description={selectedDetail ? `${selectedDetail.facilityName} - ${selectedDetail.facilityAddress}` : undefined}
-          size={detailTab === 'matches' ? 'xl' : 'lg'}
-        >
-            {detailLoading || !selectedDetail ? (
-              <div className="flex items-center justify-center py-12 text-gray-500">
-                <LoaderCircle size={22} className="mr-2 animate-spin text-red-600" />
-                Đang tải chi tiết giải đấu...
-              </div>
-            ) : (
-              <div className="mt-4 space-y-5">
-                {/* Tabs chuyển đổi trong Modal */}
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
-                  <div className="flex rounded-xl bg-gray-100 p-1 text-xs font-semibold">
-                    <button
-                      type="button"
-                      onClick={() => setDetailTab('rules')}
-                      className={`rounded-lg px-3.5 py-2 transition ${
-                        detailTab === 'rules' ? 'bg-white text-red-700 shadow-xs' : 'text-gray-600'
-                      }`}
-                    >
-                      Điều lệ & Giải thưởng
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDetailTab('teams')}
-                      className={`rounded-lg px-3.5 py-2 transition ${
-                        detailTab === 'teams' ? 'bg-white text-red-700 shadow-xs' : 'text-gray-600'
-                      }`}
-                    >
-                      Đội đã đăng ký ({selectedDetail.teams.length}/{selectedDetail.maxTeams})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDetailTab('matches')}
-                      className={`rounded-lg px-3.5 py-2 transition ${
-                        detailTab === 'matches' ? 'bg-white text-red-700 shadow-xs' : 'text-gray-600'
-                      }`}
-                    >
-                      Lịch thi đấu ({selectedDetail.matches.length})
-                    </button>
-                  </div>
+      {/* Dialog Chi tiết Giải đấu */}
+      <Dialog
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        title={selectedDetail?.name ?? 'Chi tiết giải đấu'}
+        description={selectedDetail ? `${selectedDetail.facilityName} · ${selectedDetail.sportName}` : undefined}
+        size={detailTab === 'matches' ? 'xl' : 'lg'}
+      >
+        {detailLoading || !selectedDetail ? (
+          <LoadingState label="Đang tải chi tiết giải đấu…" />
+        ) : (
+          <div className="space-y-5">
+            <nav className="grid grid-cols-3 gap-2 rounded-card border border-border bg-surface p-1.5 text-xs font-semibold">
+              {[
+                { key: 'rules', label: 'Điều lệ & Giải thưởng' },
+                { key: 'teams', label: `Đội đăng ký (${selectedDetail.teams.length}/${selectedDetail.maxTeams})` },
+                { key: 'matches', label: `Lịch & Nhánh đấu (${selectedDetail.matches.length})` },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setDetailTab(item.key as typeof detailTab)}
+                  className={`rounded-control py-2 px-3 transition-colors ${
+                    detailTab === item.key
+                      ? 'border border-primary/20 bg-surface-raised text-primary shadow-design-sm'
+                      : 'text-muted hover:bg-surface-raised'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
 
-                  {selectedDetail.status === 'OpenReg' &&
-                    selectedDetail.registeredTeamsCount < selectedDetail.maxTeams && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDetailModalOpen(false);
-                          openRegisterModal(selectedDetail);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-red-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-red-800"
-                      >
-                        <UserPlus size={14} /> Đăng ký đội tham gia
-                      </button>
-                    )}
+            {detailTab === 'rules' && (
+              <div className="space-y-4 text-sm">
+                <div className="grid gap-3 rounded-control border border-border bg-surface p-4 sm:grid-cols-2">
+                  <p><span className="text-muted">Cơ sở:</span> <strong>{selectedDetail.facilityName}</strong></p>
+                  <p><span className="text-muted">Bộ môn:</span> <strong>{selectedDetail.sportName}</strong></p>
+                  <p><span className="text-muted">Thể thức:</span> <strong>{FORMAT_LABEL[selectedDetail.tournamentType] ?? selectedDetail.tournamentType}</strong></p>
+                  <p><span className="text-muted">Lệ phí:</span> <strong className="text-primary">{selectedDetail.entryFee.toLocaleString('vi-VN')} đ / đội</strong></p>
+                  <p><span className="text-muted">Ngày thi đấu:</span> <strong>{formatDate(selectedDetail.startDate)} – {formatDate(selectedDetail.endDate)}</strong></p>
+                  <p><span className="text-muted">Hạn đăng ký:</span> <strong>{formatDate(selectedDetail.registrationDeadline)}</strong></p>
                 </div>
 
-                {detailTab === 'rules' && (
-                  <div className="space-y-4">
-                    <div className="grid gap-3 rounded-2xl bg-gray-50 p-4 text-sm sm:grid-cols-2">
-                      <p><span className="text-gray-500">Cơ sở tổ chức:</span> <strong>{selectedDetail.facilityName}</strong></p>
-                      <p><span className="text-gray-500">Bộ môn:</span> <strong>{selectedDetail.sportName}</strong></p>
-                      <p><span className="text-gray-500">Thể thức:</span> <strong>{FORMAT_LABEL[selectedDetail.tournamentType] ?? selectedDetail.tournamentType}</strong></p>
-                      <p><span className="text-gray-500">Lệ phí tham dự:</span> <strong className="text-red-700">{selectedDetail.entryFee.toLocaleString('vi-VN')} đ / đội</strong></p>
-                      <p><span className="text-gray-500">Ngày thi đấu:</span> <strong>{formatDate(selectedDetail.startDate)} – {formatDate(selectedDetail.endDate)}</strong></p>
-                      <p><span className="text-gray-500">Hạn chót đăng ký:</span> <strong>{formatDate(selectedDetail.registrationDeadline)}</strong></p>
-                    </div>
-
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
-                      <h4 className="flex items-center gap-2 font-bold text-amber-900">
-                        <Award size={18} className="text-amber-600" /> Cơ cấu giải thưởng & Nội dung điều lệ
-                      </h4>
-                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-amber-950">
-                        {selectedDetail.prizeDescription ||
-                          'Giải đấu áp dụng luật thi đấu tiêu chuẩn của Liên đoàn và hệ thống cụm sân SportHub.'}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-gray-200 p-4 space-y-2 text-xs text-gray-600">
-                      <h5 className="font-bold text-sm text-gray-900">Quy định chung dành cho Đội & Vận động viên</h5>
-                      <ul className="space-y-1.5">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                          <span>Đội trưởng đăng ký trực tuyến phải có <strong>Điểm uy tín (Reputation) ≥ 60</strong>.</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                          <span>Mỗi vận động viên chỉ được phép có tên trong <strong>1 đội duy nhất</strong> của cùng giải đấu.</span>
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                          <span>Các đội có mặt tại quầy Lễ tân cơ sở trước giờ thi đấu tối thiểu <strong>15 phút</strong> để làm thủ tục điểm danh.</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                )}
-
-                {detailTab === 'teams' && (
-                  <div className="space-y-3">
-                    {selectedDetail.teams.length === 0 ? (
-                      <p className="rounded-xl bg-gray-50 p-8 text-center text-sm text-gray-500">
-                        Chưa có đội nào đăng ký. Hãy là đội đầu tiên ghi danh tham dự!
-                      </p>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {selectedDetail.teams.map((team) => (
-                          <div key={team.id} className="rounded-xl border border-gray-200 p-4">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-gray-900">
-                                {team.seedNumber != null ? `Hạt giống #${team.seedNumber} · ` : ''}{team.teamName}
-                              </span>
-                              <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700">
-                                {tournamentTeamStatusLabels[team.status] ?? team.status}
-                              </span>
-                            </div>
-                            <p className="mt-0.5 text-[11px] text-gray-400">
-                              Đăng ký ngày {formatDate(team.registrationDate)}
-                            </p>
-                            <ul className="mt-2.5 space-y-1.5 border-t border-gray-100 pt-2 text-xs text-gray-600">
-                              {team.athletes.map((a) => (
-                                <li key={a.id} className="flex items-center justify-between">
-                                  <span className="flex items-center gap-1.5">
-                                    {a.isCaptain && <Crown size={13} className="text-amber-500" />}
-                                    <span className={a.isCaptain ? 'font-semibold text-gray-900' : ''}>
-                                      {a.fullName}
-                                    </span>
-                                    {a.isCaptain && (
-                                      <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
-                                        Đội trưởng
-                                      </span>
-                                    )}
-                                  </span>
-                                  {a.skillRating !== null && (
-                                    <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
-                                      ELO {a.skillRating.toFixed(2)} {a.skillLevel ? `· ${a.skillLevel}` : ''}
-                                    </span>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                            {isAuthenticated && team.athletes.some((athlete) => athlete.isCaptain && athlete.userId === user?.userId) && (
-                              <TournamentTeamPayment key={`${selectedDetail.id}-${team.id}`} tournament={selectedDetail} team={team}
-                                onTeamStatusChange={(teamId, status) => setSelectedDetail((detail) => detail ? {
-                                  ...detail, teams: detail.teams.map((item) => item.id === teamId ? { ...item, status } : item),
-                                } : detail)} />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {detailTab === 'matches' && <TournamentBracketPanel key={selectedDetail.id} tournamentId={selectedDetail.id} />}
-
+                <div className="rounded-control border border-border bg-surface p-4">
+                  <h4 className="font-semibold text-foreground">Điều lệ & Cơ cấu giải thưởng</h4>
+                  <p className="mt-2 whitespace-pre-line text-sm text-muted">
+                    {selectedDetail.prizeDescription || 'Áp dụng luật thi đấu tiêu chuẩn của hệ thống cụm sân SportHub.'}
+                  </p>
+                </div>
               </div>
             )}
-        </Dialog>
-      )}
 
-      {/* Modal Form Đăng ký Đội / Vận động viên */}
-      {registerModalOpen && registerTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-red-700">
-                  Form đăng ký đội tham dự · UC19
-                </p>
-                <h3 className="mt-1 text-xl font-extrabold text-gray-900">
-                  {registerTarget.name}
-                </h3>
-                <p className="text-xs text-gray-500">
-                  {registerTarget.facilityName} · {registerTarget.sportName}
-                </p>
+            {detailTab === 'teams' && (
+              <div className="space-y-3">
+                {selectedDetail.teams.length === 0 ? (
+                  <p className="rounded-control border border-border bg-surface p-6 text-center text-sm text-muted">
+                    Chưa có đội nào đăng ký.
+                  </p>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {selectedDetail.teams.map((team) => (
+                      <div key={team.id} className="rounded-control border border-border bg-surface-raised p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-foreground">
+                            {team.seedNumber != null ? `#${team.seedNumber} · ` : ''}{team.teamName}
+                          </span>
+                          <Badge variant={team.status === 'Approved' ? 'primary' : 'neutral'}>
+                            {tournamentTeamStatusLabels[team.status] ?? team.status}
+                          </Badge>
+                        </div>
+                        <ul className="space-y-1 border-t border-border pt-2 text-xs text-muted">
+                          {team.athletes.map((a) => (
+                            <li key={a.id} className="flex items-center justify-between">
+                              <span className="flex items-center gap-1.5 text-foreground">
+                                {a.isCaptain && <Crown size={13} className="text-primary" />}
+                                {a.fullName} {a.isCaptain ? '(Đội trưởng)' : ''}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        {isAuthenticated &&
+                          team.athletes.some((a) => a.isCaptain && a.userId === user?.userId) && (
+                            <TournamentTeamPayment
+                              tournament={selectedDetail}
+                              team={team}
+                              onTeamStatusChange={(teamId, status) =>
+                                setSelectedDetail((d) =>
+                                  d
+                                    ? {
+                                        ...d,
+                                        teams: d.teams.map((item) =>
+                                          item.id === teamId ? { ...item, status } : item,
+                                        ),
+                                      }
+                                    : d,
+                                )
+                              }
+                            />
+                          )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => setRegisterModalOpen(false)}
-                className="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-              >
-                <X size={20} />
-              </button>
+            )}
+
+            {detailTab === 'matches' && (
+              <TournamentBracketPanel key={selectedDetail.id} tournamentId={selectedDetail.id} />
+            )}
+          </div>
+        )}
+      </Dialog>
+
+      {/* Dialog Đăng ký Đội */}
+      <Dialog
+        open={registerModalOpen && registerTarget !== null}
+        onOpenChange={setRegisterModalOpen}
+        title={registerTarget ? `Đăng ký đội · ${registerTarget.name}` : 'Đăng ký đội'}
+        description={registerTarget ? `${registerTarget.facilityName} · ${registerTarget.sportName}` : undefined}
+        size="lg"
+      >
+        {registerTarget && (
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-control border border-border bg-surface p-3.5 text-sm">
+              <span>
+                Đội trưởng: <strong>{user?.fullName}</strong> ({user?.phoneNumber})
+              </span>
+              <Badge variant={captainEligible ? 'primary' : 'error'}>
+                Uy tín: {captainRep}/100
+              </Badge>
             </div>
 
-            <form onSubmit={handleRegisterSubmit} className="mt-5 space-y-4">
-              {/* Thông tin Đội trưởng & Kiểm tra Uy tín */}
-              <div
-                className={`rounded-xl p-3.5 text-xs space-y-1.5 border ${
-                  captainEligible
-                    ? 'border-emerald-200 bg-emerald-50/70 text-emerald-950'
-                    : 'border-red-200 bg-red-50 text-red-900'
-                }`}
-              >
-                <p className="font-bold flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Crown size={14} className="text-amber-500" />
-                    Đội trưởng: {user?.fullName} ({user?.phoneNumber})
-                  </span>
-                  <span className="rounded-full bg-white px-2.5 py-0.5 font-bold shadow-2xs">
-                    Uy tín: {captainRep}/100
-                  </span>
-                </p>
-                <p className="flex items-center gap-1.5">
-                  {captainEligible ? (
-                    <>
-                      <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
-                      <span>Đủ điều kiện làm Đội trưởng (Điểm uy tín ≥ 60).</span>
-                    </>
-                  ) : (
-                    <>
-                      <ShieldAlert size={14} className="text-red-600 shrink-0" />
-                      <span>Điểm uy tín của bạn dưới 60 nên không đủ điều kiện đăng ký giải đấu.</span>
-                    </>
-                  )}
-                </p>
+            {submitErrorBanner && (
+              <p role="alert" className="rounded-control border border-error bg-error/10 p-3 text-sm text-error">
+                {submitErrorBanner}
+              </p>
+            )}
+
+            <Input
+              label="Tên đội thi đấu *"
+              value={teamName}
+              error={teamNameError}
+              onChange={(e) => {
+                setTeamName(e.target.value);
+                setTeamNameError(undefined);
+              }}
+              placeholder="VD: Saigon Smashers"
+            />
+
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-foreground">
+                  Vận động viên cùng đội ({members.length}/8)
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    members.length < 8 && setMembers((prev) => [...prev, { name: '', phone: '' }])
+                  }
+                >
+                  <Plus size={14} /> Thêm VĐV
+                </Button>
               </div>
 
-              {submitErrorBanner && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-700">
-                  {submitErrorBanner}
-                </div>
-              )}
-
-              <label className="block space-y-1.5">
-                <span className="text-sm font-semibold text-gray-700">Tên đội thi đấu *</span>
-                <input
-                  value={teamName}
-                  onChange={(e) => {
-                    setTeamName(e.target.value);
-                    if (teamNameError) setTeamNameError(null);
-                    setSubmitErrorBanner(null);
-                  }}
-                  placeholder="Nhập tên đội (VD: Saigon Dragon Smashers)"
-                  className={`${inputClass} ${teamNameError ? 'border-red-500 bg-red-50/30' : ''}`}
-                />
-                {teamNameError && (
-                  <p className="text-xs font-medium text-red-600">{teamNameError}</p>
-                )}
-              </label>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-700">
-                    Danh sách Vận động viên cùng đội ({members.length}/8)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleAddPhoneField}
-                    className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                  >
-                    <Plus size={14} /> Thêm VĐV
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Nhập số điện thoại (9–11 số, bắt đầu bằng 0) và họ tên (tuỳ chọn) của các thành viên trong đội. Nếu SĐT chưa có tài khoản, hệ thống sẽ tự động khởi tạo hồ sơ VĐV.
-                </p>
-
-                {members.map((member, idx) => {
-                  const rowErr = memberErrors[idx];
-                  return (
-                    <div key={idx} className="space-y-1">
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
-                        <input
-                          type="text"
-                          value={member.name}
-                          onChange={(e) => handleMemberChange(idx, 'name', e.target.value)}
-                          placeholder={`Họ tên VĐV #${idx + 2} (tuỳ chọn)`}
-                          className={`${inputClass} sm:col-span-5 ${rowErr?.name ? 'border-red-500 bg-red-50/30' : ''}`}
+              {members.map((member, idx) => {
+                const rowErr = memberErrors[idx];
+                return (
+                  <div key={idx} className="grid gap-2 sm:grid-cols-12 items-start">
+                    <div className="sm:col-span-5">
+                      <Input
+                        value={member.name}
+                        error={rowErr?.name}
+                        onChange={(e) => handleMemberChange(idx, 'name', e.target.value)}
+                        placeholder={`Họ tên VĐV #${idx + 2}`}
+                      />
+                    </div>
+                    <div className="flex items-start gap-2 sm:col-span-7">
+                      <div className="flex-1">
+                        <Input
+                          type="tel"
+                          value={member.phone}
+                          error={rowErr?.phone}
+                          onChange={(e) => handleMemberChange(idx, 'phone', e.target.value)}
+                          placeholder={`SĐT VĐV #${idx + 2} (09xxxxxxxx)`}
                         />
-                        <div className="flex items-center gap-2 sm:col-span-7">
-                          <input
-                            type="tel"
-                            value={member.phone}
-                            onChange={(e) => handleMemberChange(idx, 'phone', e.target.value)}
-                            placeholder={`SĐT VĐV #${idx + 2} (VD: 0976732457)`}
-                            className={`${inputClass} ${rowErr?.phone ? 'border-red-500 bg-red-50/30' : ''}`}
-                          />
-                          {members.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePhoneField(idx)}
-                              className="rounded-xl border border-gray-200 p-2.5 text-gray-400 hover:border-red-200 hover:text-red-600"
-                              title="Xóa VĐV"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          )}
-                        </div>
                       </div>
-                      {(rowErr?.name || rowErr?.phone) && (
-                        <p className="text-xs font-medium text-red-600">
-                          {rowErr.name ?? rowErr.phone}
-                        </p>
+                      {members.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setMembers((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          <Trash2 size={15} />
+                        </Button>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
+            </div>
 
-              <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-sm">
-                <span className="text-gray-600">Lệ phí đăng ký đội:</span>
-                <span className="text-lg font-extrabold text-red-700">
-                  {registerTarget.entryFee > 0
-                    ? `${registerTarget.entryFee.toLocaleString('vi-VN')} đ`
-                    : 'Miễn phí'}
-                </span>
-              </div>
+            <div className="flex items-center justify-between rounded-control border border-border bg-surface px-4 py-3 text-sm">
+              <span className="text-muted">Lệ phí đăng ký đội:</span>
+              <strong className="text-base text-primary">
+                {registerTarget.entryFee > 0
+                  ? `${registerTarget.entryFee.toLocaleString('vi-VN')} đ`
+                  : 'Miễn phí'}
+              </strong>
+            </div>
 
-              {registerTarget.entryFee > 0 && (
-                <p className="text-sm text-muted">Sau khi đăng ký, đội ở trạng thái chờ thanh toán. Đội trưởng thanh toán qua VNPay tại Giải đấu của tôi; đội được duyệt khi hệ thống xác nhận giao dịch thành công.</p>
-              )}
+            <label className="flex items-start gap-2.5 text-xs text-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={agreedRules}
+                onChange={(e) => {
+                  setAgreedRules(e.target.checked);
+                  if (e.target.checked) setAgreedError(null);
+                }}
+                className="mt-0.5 rounded border-border text-primary"
+              />
+              <span>Tôi đã đọc điều lệ giải đấu và cam kết đội có mặt đúng giờ thi đấu.</span>
+            </label>
+            {agreedError && <p className="text-xs text-error">{agreedError}</p>}
 
-              <div className="space-y-1">
-                <label className="flex items-start gap-2.5 text-xs text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={agreedRules}
-                    onChange={(e) => {
-                      setAgreedRules(e.target.checked);
-                      if (e.target.checked) setAgreedError(null);
-                    }}
-                    className="mt-0.5 rounded border-gray-300 text-red-700 focus:ring-red-600"
-                  />
-                  <span>
-                    Tôi đã đọc, hiểu rõ điều lệ giải đấu và cam kết các vận động viên trong đội có mặt đúng giờ thi đấu.
-                  </span>
-                </label>
-                {agreedError && (
-                  <p className="text-xs font-medium text-red-600">{agreedError}</p>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setRegisterModalOpen(false)}
-                  className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingTeam || !captainEligible}
-                  className="inline-flex items-center gap-2 rounded-xl bg-red-700 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-red-800 disabled:opacity-60"
-                >
-                  {submittingTeam ? <LoaderCircle size={16} className="animate-spin" /> : <CircleCheck size={16} />}
-                  {submittingTeam ? 'Đang gửi đăng ký...' : 'Xác nhận đăng ký đội'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setRegisterModalOpen(false)}>
+                Hủy
+              </Button>
+              <Button type="submit" loading={submittingTeam} disabled={!captainEligible}>
+                Xác nhận đăng ký đội
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
     </div>
   );
 
-  if (embedded) return content;
-  if (isInsidePlayerLayout) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>Khu vực người chơi · Giải đấu</span>
-          <Link to="/player" className="font-medium text-red-700 hover:underline">
-            ← Về trang tổng quan
-          </Link>
-        </div>
-        {content}
-      </div>
-    );
-  }
+  if (embedded || isInsidePlayerLayout) return content;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-text">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       <PublicSiteHeader />
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-10">{content}</main>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">{content}</main>
       <PublicSiteFooter />
     </div>
   );

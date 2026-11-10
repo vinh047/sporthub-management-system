@@ -2,13 +2,23 @@ import { axiosInstance } from './axiosInstance';
 import type { ApiResponse } from './checkHealth';
 import type { CheckInChannel, CheckInHistoryItem } from './checkInApi';
 
+export interface PosCustomer {
+  userId: number;
+  fullName: string;
+  phoneNumber: string;
+  currentTier: string;
+  loyaltyPoints: number;
+  reputationScore: number;
+}
+
 export interface PosBookingRequest {
   courtId: number;
-  playDate: string;        // "2026-11-01"
+  playDate: string;
   timeSlotIds: number[];
   guestName: string;
   guestPhone: string;
-  paymentMethodId: number; // 1 = Tiền mặt, 2 = Chuyển khoản
+  paymentMethodId: number;
+  customerUserId?: number | null;
 }
 
 export interface PosBookingResponse {
@@ -18,6 +28,11 @@ export interface PosBookingResponse {
 }
 
 export const posApi = {
+  searchCustomers: (keyword: string) =>
+    axiosInstance
+      .get<ApiResponse<PosCustomer[]>>('/pos/customers', { params: { keyword } })
+      .then((res) => res.data.data ?? []),
+
   createBooking: (body: PosBookingRequest) =>
     axiosInstance
       .post<ApiResponse<PosBookingResponse>>('/pos/bookings', body)

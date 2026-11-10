@@ -3,6 +3,7 @@ namespace SportHub.Application.DTOs.CheckIn;
 public record CheckInHistoryItemDto(
     int CheckInLogId,
     int BookingDetailId,
+    int BookingId,
     string BookingCode,
     string CustomerName,
     string? Phone,
@@ -12,5 +13,6 @@ public record CheckInHistoryItemDto(
     TimeOnly EndTime,
     string Channel,
     DateTime CheckInAt,
-    string StaffName
+    string StaffName,
+    string BookingStatus
 );

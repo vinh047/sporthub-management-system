@@ -19,6 +19,15 @@ public class UserRepository(SportHubDbContext context)
     public async Task<Role?> GetRoleByCodeAsync(string roleCode)
         => await _context.Roles.FirstOrDefaultAsync(r => r.RoleCode == roleCode);
 
+    public async Task<List<User>> SearchByPhoneOrNameAsync(string keyword)
+        => await _dbSet
+            .AsNoTracking()
+            .Include(u => u.PlayerProfile)
+            .Where(u => u.IsActive && (u.PhoneNumber.Contains(keyword) || u.FullName.Contains(keyword)))
+            .OrderBy(u => u.FullName)
+            .Take(8)
+            .ToListAsync();
+
     private IQueryable<User> WithRoleAndProfiles() => _dbSet
         .Include(u => u.UserRole).ThenInclude(ur => ur!.Role)
         .Include(u => u.PlayerProfile)
