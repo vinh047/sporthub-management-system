@@ -1,7 +1,7 @@
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Notifications;
 using SportHub.Application.DTOs.Notifications;
-
+using SportHub.Application.Interfaces.Repositories;
 namespace SportHub.Application.Services;
 
 public class NotificationService(
