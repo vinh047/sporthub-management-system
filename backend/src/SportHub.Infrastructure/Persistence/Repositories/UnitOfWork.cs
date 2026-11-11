@@ -15,13 +15,13 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
     public IStaffProfileRepository StaffProfiles { get; } = new StaffProfileRepository(context);
     public IPlayerProfileRepository PlayerProfiles { get; } = new PlayerProfileRepository(context);
 
-    // Facility và Pricing
+    // Facility, Court và Pricing
     public IFacilityRepository Facilities { get; } = new FacilityRepository(context);
     public ICourtRepository Courts { get; } = new CourtRepository(context);
     public IPricingRepository Pricing { get; } = new PricingRepository(context);
     public IPromotionRepository Promotions { get; } = new PromotionRepository(context);
 
-    // Booking và Payment
+    // Booking, Payment và CheckIn
     public IBookingRepository Bookings { get; } = new BookingRepository(context);
     public IPaymentRepository Payments { get; } = new PaymentRepository(context);
     public ICheckInRepository CheckIns { get; } = new CheckInRepository(context);
@@ -32,6 +32,13 @@ public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
 
     // Report
     public IReportRepository Reports { get; } = new ReportRepository(context);
+
+    // Notification
+    public INotificationTemplateRepository NotificationTemplates { get; } =
+        new NotificationTemplateRepository(context);
+
+    public IUserNotificationRepository UserNotifications { get; } =
+        new UserNotificationRepository(context);
 
     // Save Changes
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)

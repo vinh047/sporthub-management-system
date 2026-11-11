@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using SportHub.Application.Common;
 using SportHub.Application.DTOs.Player;
 using SportHub.Application.Interfaces.Services;
+using System.IO;
+using System.Linq;
 
 namespace SportHub.API.Controllers;
 
@@ -62,5 +64,120 @@ public class PlayerProfilesController(
         }
 
         return parsedUserId;
+    }
+
+    // Upload ảnh đại diện
+    [HttpPost("me/avatar")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadAvatar(
+    IFormFile file)
+    {
+        var userId = GetCurrentUserId();
+
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(
+                BaseResponse<PlayerProfileResponse>.Fail("Vui lòng chọn ảnh.")
+            );
+        }
+
+        // Giới hạn 2 MB
+        const long maxFileSize = 2 * 1024 * 1024;
+
+        if (file.Length > maxFileSize)
+        {
+            return BadRequest(
+                BaseResponse<PlayerProfileResponse>.Fail("Ảnh không được vượt quá 2 MB.")
+            );
+        }
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+
+        if (!allowedExtensions.Contains(extension))
+        {
+            return BadRequest(
+                BaseResponse<PlayerProfileResponse>.Fail(
+                    "Chỉ chấp nhận ảnh JPG, JPEG, PNG hoặc WEBP."
+                )
+            );
+        }
+
+        var allowedContentTypes = new[]
+        {
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+    };
+
+        if (!allowedContentTypes.Contains(file.ContentType.ToLowerInvariant()))
+        {
+            return BadRequest(
+                BaseResponse<PlayerProfileResponse>.Fail("Định dạng ảnh không hợp lệ.")
+            );
+        }
+
+        await using var stream = file.OpenReadStream();
+
+        var result = await playerProfileService.UpdateAvatarAsync(
+            userId,
+            stream,
+            extension
+        );
+
+        return Ok(
+            BaseResponse<PlayerProfileResponse>.Ok(
+                result,
+                "Cập nhật ảnh đại diện thành công!"
+            )
+        );
+    }
+
+    // Xóa ảnh đại diện
+    [HttpDelete("me/avatar")]
+    public async Task<ActionResult<BaseResponse<PlayerProfileResponse>>> RemoveAvatar()
+    {
+        var userId = GetCurrentUserId();
+
+        var result = await playerProfileService.RemoveAvatarAsync(userId);
+
+        return Ok(
+            BaseResponse<PlayerProfileResponse>.Ok(
+                result,
+                "Xóa ảnh đại diện thành công!"
+            )
+        );
+    }
+
+    // Admin lấy danh sách tất cả người chơi
+    [HttpGet]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult<BaseResponse<IEnumerable<PlayerProfileResponse>>>>
+        GetAll()
+    {
+        var result = await playerProfileService.GetAllAsync();
+
+        return Ok(BaseResponse<IEnumerable<PlayerProfileResponse>>.Ok(result));
+    }
+
+    // Admin khóa hoặc mở khóa tài khoản người chơi
+    [HttpPut("{userId:int}/status")]
+    [Authorize(Roles = "ADMIN")]
+    public async Task<ActionResult<BaseResponse<PlayerProfileResponse>>>
+        UpdateStatus(
+            int userId,
+            [FromBody] UpdatePlayerStatusRequest request)
+    {
+        var result = await playerProfileService.UpdateStatusAsync(
+            userId,
+            request
+        );
+
+        var message = request.IsActive
+            ? "Kích hoạt tài khoản người chơi thành công!"
+            : "Vô hiệu hóa tài khoản người chơi thành công!";
+
+        return Ok(BaseResponse<PlayerProfileResponse>.Ok(result, message));
     }
 }

@@ -5,6 +5,7 @@ import Brand from '../components/Brand';
 import UserMenu from '../components/UserMenu';
 import { notifyComingSoon } from '../utils/comingSoon';
 import type { FeatureKey } from '../utils/comingSoon';
+import NotificationBell from '../components/NotificationBell';
 
 // Mỗi người thêm mục menu người chơi của mình vào đây.
 // Có "feature" = trang chưa làm: bấm sẽ hiện người phụ trách. Làm xong thì xóa "feature" và thêm route.
@@ -15,7 +16,6 @@ const MENU: { to: string; label: string; icon: LucideIcon; feature?: FeatureKey 
   { to: '/player/social', label: 'Social', icon: Users, feature: 'social' },
   { to: '/player/tournaments', label: 'Giải đấu', icon: Trophy },
   { to: '/player/vouchers', label: 'Ưu đãi', icon: TicketPercent },
-  { to: '/player/profile', label: 'Hồ sơ', icon: UserRound, feature: 'profile' },
 ];
 
 const itemClass = 'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition';
@@ -23,19 +23,34 @@ const itemClass = 'flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-med
 export default function PlayerLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-white text-gray-900">
-      <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/90 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          <NavLink to="/" className="shrink-0"><Brand /></NavLink>
-          <nav className="hidden lg:flex items-center gap-1">
-            {MENU.map((m) => <MenuItem key={m.to} {...m} />)}
-          </nav>
-          <UserMenu />
-        </div>
-        {/* Menu cuộn ngang cho màn hình nhỏ */}
-        <nav className="lg:hidden flex gap-1 overflow-x-auto [scrollbar-width:none] px-3 pb-2">
-          {MENU.map((m) => <MenuItem key={m.to} {...m} />)}
-        </nav>
-      </header>
+        <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/90 backdrop-blur" >
+            <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4" >
+                <NavLink to="/" className = "shrink-0" >
+                    <Brand />
+                    </NavLink>
+
+                    < nav className = "hidden items-center gap-1 lg:flex" >
+                    {
+                        MENU.map((m) => (
+                            <MenuItem key= { m.to } { ...m } />
+            ))
+                    }
+                        </nav>
+
+                        < div className = "flex shrink-0 items-center gap-3" >
+                            <NotificationBell />
+                            < UserMenu />
+                            </div>
+                            </div>
+
+                            < nav className = "flex gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none] lg:hidden" >
+                            {
+                                MENU.map((m) => (
+                                    <MenuItem key= { m.to } { ...m } />
+        ))
+                            }
+                                </nav>
+                                </header>
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
         <Outlet />
       </main>

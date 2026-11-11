@@ -9,6 +9,7 @@ using SportHub.Application.Services;
 using SportHub.Infrastructure;
 using SportHub.Infrastructure.Data;
 using SportHub.Infrastructure.Persistence.Seed;
+using SportHub.API.Services;
 
 var seedRequested = args.Any(argument =>
     string.Equals(argument, "--seed", StringComparison.OrdinalIgnoreCase));
@@ -33,7 +34,12 @@ builder.Services.AddSwaggerDocumentation();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>(); 
 builder.Services.AddApiHealthChecks();
+builder.Services.AddScoped<IStaffProfileService, StaffProfileService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPlayerProfileService, PlayerProfileService>();
+builder.Services.AddScoped<IAvatarStorage, AvatarStorage>();
 
 // Clean Architecture Layers
 builder.Services.AddApplicationServices();
@@ -100,7 +106,7 @@ app.UseFrontendCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Controllers
+app.UseStaticFiles();
 app.MapControllers();
 
 // SignalR Hubs

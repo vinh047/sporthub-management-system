@@ -39,4 +39,39 @@ public class AuthController(IAuthService authService) : ApiControllerBase
         await authService.UpdateSportProfileAsync(RequiredUserId, request);
         return Ok(BaseResponse.Ok("Cập nhật hồ sơ thành công!"));
     }
+
+
+    /// <summary>Cập nhật họ tên và số điện thoại</summary>
+    [HttpPut("me")]
+    [Authorize]
+    public async Task<ActionResult<BaseResponse<MeResponse>>> UpdateAccount(
+        [FromBody] UpdateAccountRequest request)
+    {
+        var result = await authService.UpdateAccountAsync(
+            RequiredUserId,
+            request
+        );
+
+        return Ok(BaseResponse<MeResponse>.Ok(
+            result,
+            "Cập nhật thông tin tài khoản thành công!"
+        ));
+    }
+
+    /// <summary>Đổi mật khẩu tài khoản</summary>
+    [HttpPut("change-password")]
+    [Authorize]
+    public async Task<ActionResult<BaseResponse>> ChangePassword(
+        [FromBody] ChangePasswordRequest request)
+    {
+        await authService.ChangePasswordAsync(
+            RequiredUserId,
+            request
+        );
+
+        return Ok(BaseResponse.Ok(
+            "Đổi mật khẩu thành công!"
+        ));
+    }
+
 }

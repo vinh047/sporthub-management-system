@@ -4,8 +4,7 @@ import { useAuthStore } from '../store/authStore';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const axiosInstance = axios.create({
-  baseURL: `${API_URL}/api`,
-  headers: { 'Content-Type': 'application/json' },
+    baseURL: `${API_URL}/api`,
 });
 
 // Request interceptor — tự động đính kèm JWT token (trừ login/register)

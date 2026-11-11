@@ -1,37 +1,58 @@
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type Role = 'ADMIN' | 'STAFF' | 'PLAYER';
 
 export interface User {
-  userId: number;
-  fullName: string;
-  phoneNumber: string;
-  role: Role;
-  facilityId: number | null; // cơ sở được phân công (chỉ Staff)
+    userId: number;
+    fullName: string;
+    phoneNumber: string;
+    role: Role;
+    facilityId: number | null;
+    avatarUrl?: string | null;
 }
 
 interface AuthState {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  login: (user: User, token: string) => void;
-  logout: () => void;
+    user: User | null;
+    token: string | null;
+    isAuthenticated: boolean;
+
+    login: (user: User, token: string) => void;
+    logout: () => void;
+    updateUser: (updatedInfo: Partial<User>) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      token: null,
-      isAuthenticated: false,
+    persist(
+        (set) => ({
+            user: null,
+            token: null,
+            isAuthenticated: false,
 
-      login: (user, token) => set({ user, token, isAuthenticated: true }),
+            login: (user, token) =>
+                set({
+                    user,
+                    token,
+                    isAuthenticated: true,
+                }),
 
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
-    }),
-    {
-      name: 'sporthub-auth', // key trong localStorage
-    }
-  )
+            logout: () =>
+                set({
+                    user: null,
+                    token: null,
+                    isAuthenticated: false,
+                }),
+
+            updateUser: (updatedInfo) =>
+                set((state) => ({
+                    user: state.user
+                        ? { ...state.user, ...updatedInfo }
+                        : null,
+                })),
+        }),
+        {
+            name: 'sporthub-auth',
+        }
+    )
 );

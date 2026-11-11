@@ -5,6 +5,11 @@ public record UpdatePlayerProfileRequest(
     string? SkillLevel
 );
 
+// Admin cập nhật trạng thái tài khoản
+public record UpdatePlayerStatusRequest(
+    bool IsActive
+);
+
 // Dữ liệu trả về cho giao diện
 public record PlayerProfileResponse(
     int UserId,
@@ -16,5 +21,7 @@ public record PlayerProfileResponse(
     int TotalMatchesPlayed,
     int TotalNoShows,
     int LoyaltyPoints,
-    string CurrentTier
+    string CurrentTier,
+    string? AvatarUrl,
+    bool IsActive
 );

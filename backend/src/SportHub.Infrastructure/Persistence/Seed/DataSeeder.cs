@@ -5,6 +5,7 @@ using SportHub.Domain.Entities.Auth;
 using SportHub.Domain.Entities.Facility;
 using SportHub.Domain.Entities.Payment;
 using SportHub.Domain.Entities.Player;
+using SportHub.Domain.Entities.Notifications;
 
 namespace SportHub.Infrastructure.Persistence.Seed;
 
@@ -272,6 +273,46 @@ public static class DataSeeder
             player.IsActive = true;
             player.UserRole ??= new UserRole { Role = playerRole };
             player.PlayerProfile ??= CreatePlayerProfile(seed);
+        }
+
+        await db.SaveChangesAsync();
+
+        // 6. Tạo mẫu thông báo
+        var notificationTemplates = new[]
+        {
+    new NotificationTemplate
+    {
+        TemplateCode = "WELCOME",
+        TitlePattern = "Chào mừng đến với SportHub!",
+        BodyPattern = "Xin chào {FullName}, chúc bạn có những trải nghiệm tuyệt vời tại SportHub."
+    },
+    new NotificationTemplate
+    {
+        TemplateCode = "BOOKING_CONFIRMED",
+        TitlePattern = "Đặt sân thành công",
+        BodyPattern = "Xin chào {FullName}, đơn đặt sân #{BookingId} của bạn đã được xác nhận."
+    },
+    new NotificationTemplate
+    {
+        TemplateCode = "BOOKING_CANCELLED",
+        TitlePattern = "Đơn đặt sân đã bị hủy",
+        BodyPattern = "Xin chào {FullName}, đơn đặt sân #{BookingId} của bạn đã bị hủy."
+    },
+    new NotificationTemplate
+    {
+        TemplateCode = "PAYMENT_SUCCESS",
+        TitlePattern = "Thanh toán thành công",
+        BodyPattern = "Xin chào {FullName}, thanh toán #{PaymentId} của bạn đã hoàn tất."
+    }
+};
+
+        foreach (var template in notificationTemplates)
+        {
+            if (!await db.NotificationTemplates.AnyAsync(
+                x => x.TemplateCode == template.TemplateCode))
+            {
+                db.NotificationTemplates.Add(template);
+            }
         }
 
         await db.SaveChangesAsync();

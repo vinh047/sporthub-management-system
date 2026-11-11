@@ -6,8 +6,11 @@ using SportHub.Domain.Exceptions;
 
 namespace SportHub.Application.Services;
 
-public class PlayerProfileService(IUnitOfWork uow)
-    : IPlayerProfileService
+public class PlayerProfileService(
+    IUnitOfWork uow,
+    IAvatarStorage avatarStorage
+) : IPlayerProfileService
+
 {
     private static readonly string[] AllowedSkillLevels =
     [
@@ -77,7 +80,114 @@ public class PlayerProfileService(IUnitOfWork uow)
             profile.TotalMatchesPlayed,
             profile.TotalNoShows,
             profile.LoyaltyPoints,
-            profile.CurrentTier
+            profile.CurrentTier,
+            profile.User.AvatarUrl,
+            profile.User.IsActive
+
         );
+    }
+
+    // Thay đổi ảnh đại diện
+    public async Task<PlayerProfileResponse> UpdateAvatarAsync(
+        int userId,
+        Stream fileStream,
+        string extension)
+    {
+        var user = await uow.Users.GetWithProfileAsync(userId);
+
+        if (user == null || user.PlayerProfile == null)
+        {
+            throw new NotFoundException("Hồ sơ người chơi", userId);
+        }
+
+        var oldAvatarUrl = user.AvatarUrl;
+        var newAvatarUrl = await avatarStorage.SaveAsync(
+            fileStream,
+            extension,
+            userId
+        );
+
+        try
+        {
+            user.AvatarUrl = newAvatarUrl;
+
+            uow.Users.Update(user);
+
+            await uow.SaveChangesAsync();
+        }
+        catch
+        {
+            await avatarStorage.DeleteAsync(newAvatarUrl);
+            throw;
+        }
+
+        // Chỉ xóa ảnh cũ sau khi cập nhật database thành công.
+        if (!string.IsNullOrWhiteSpace(oldAvatarUrl))
+        {
+            await avatarStorage.DeleteAsync(oldAvatarUrl);
+        }
+
+        var updatedProfile = await uow.PlayerProfiles.GetByUserIdAsync(userId);
+
+        return MapToResponse(updatedProfile!);
+    }
+
+    // Xóa ảnh đại diện
+    public async Task<PlayerProfileResponse> RemoveAvatarAsync(int userId)
+    {
+        var user = await uow.Users.GetWithProfileAsync(userId);
+
+        if (user == null || user.PlayerProfile == null)
+        {
+            throw new NotFoundException("Hồ sơ người chơi", userId);
+        }
+
+        var oldAvatarUrl = user.AvatarUrl;
+
+        user.AvatarUrl = null;
+
+        uow.Users.Update(user);
+
+        await uow.SaveChangesAsync();
+
+        if (!string.IsNullOrWhiteSpace(oldAvatarUrl))
+        {
+            await avatarStorage.DeleteAsync(oldAvatarUrl);
+        }
+
+        var updatedProfile = await uow.PlayerProfiles.GetByUserIdAsync(userId);
+
+        return MapToResponse(updatedProfile!);
+    }
+
+    // Admin lấy danh sách tất cả người chơi
+    public async Task<IEnumerable<PlayerProfileResponse>> GetAllAsync()
+    {
+        var profiles = await uow.PlayerProfiles.GetAllWithUserAsync();
+
+        return profiles.Select(MapToResponse);
+    }
+
+    // Admin khóa hoặc mở khóa tài khoản người chơi
+    public async Task<PlayerProfileResponse> UpdateStatusAsync(
+        int userId,
+        UpdatePlayerStatusRequest request)
+    {
+        var user = await uow.Users.GetWithProfileAsync(userId);
+
+        if (user == null || user.PlayerProfile == null)
+        {
+            throw new NotFoundException("Hồ sơ người chơi", userId);
+        }
+
+        user.IsActive = request.IsActive;
+
+        uow.Users.Update(user);
+
+        await uow.SaveChangesAsync();
+
+        var updatedProfile = await uow.PlayerProfiles.GetByUserIdAsync(userId);
+
+        return MapToResponse(updatedProfile!);
     }
 }

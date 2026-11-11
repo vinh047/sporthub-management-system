@@ -18,8 +18,30 @@ public class AuthService(
     private const string PlayerRole = "PLAYER";
     private const string StaffRole = "STAFF";
 
-    // ── Register ─────────────────────────────────────────────
+    // Tài khoản Demo
+    private static readonly Dictionary<string, (string FullName, string RoleCode, string[] Passwords)>
+        DemoAccounts = new()
+        {
+            ["0900000000"] = ("Quản trị viên SportHub", "ADMIN",
+                ["Admin@123", "Test@1234"]),
 
+            ["0900000001"] = ("Super Admin", "ADMIN",
+                ["Test@1234", "Admin@123"]),
+
+            ["0900000002"] = ("Nhân viên lễ tân SportHub", "STAFF",
+                ["Staff@123", "Test@1234"]),
+
+            ["0911111111"] = ("Nguyen Van An (Lễ tân)", "STAFF",
+                ["Test@1234", "Staff@123"]),
+
+            ["0922222201"] = ("Phạm Minh Dũng", "PLAYER",
+                ["Test@1234"]),
+
+            ["0922222202"] = ("Hoàng Thị Lan", "PLAYER",
+                ["Test@1234"])
+        };
+
+    // Đăng ký
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
         var fullName = request.FullName?.Trim() ?? string.Empty;
@@ -35,8 +57,11 @@ public class AuthService(
         if (fullName.Length > 100)
             errors.Add("Họ tên không được vượt quá 100 ký tự.");
 
-        if (phone.Length is < 9 or > 15 || !phone.All(char.IsDigit))
+        if (phone.Length < 9 || phone.Length > 15 ||
+            !phone.All(char.IsDigit))
+        {
             errors.Add("Số điện thoại không hợp lệ.");
+        }
 
         if (password.Length < 6)
             errors.Add("Mật khẩu phải có ít nhất 6 ký tự.");
@@ -47,17 +72,13 @@ public class AuthService(
         if (errors.Count > 0)
             throw new ValidationException(errors);
 
-        // Kiểm tra số điện thoại đã tồn tại
         if (await uow.Users.GetByPhoneNumberAsync(phone) is not null)
             throw new ConflictException("Số điện thoại đã được đăng ký.");
 
-        // Lấy Role PLAYER
         var playerRole = await uow.Users.GetRoleByCodeAsync(PlayerRole)
             ?? throw new InvalidOperationException(
-                "Chưa có vai trò PLAYER trong database. " +
-                "Chạy backend ở môi trường Development để tự tạo dữ liệu nền.");
+                "Chưa có vai trò PLAYER trong database.");
 
-        // Tạo tài khoản và hồ sơ người chơi
         var user = new User
         {
             FullName = fullName,
@@ -91,32 +112,7 @@ public class AuthService(
         return BuildAuthResponse(user, PlayerRole, null);
     }
 
-    // ── Demo Accounts ────────────────────────────────────────
-
-    private static readonly Dictionary<string, (string FullName, string RoleCode, string[] Passwords)>
-        DemoAccounts = new()
-        {
-            ["0900000000"] = ("Quản trị viên SportHub", "ADMIN",
-                ["Admin@123", "Test@1234"]),
-
-            ["0900000001"] = ("Super Admin", "ADMIN",
-                ["Test@1234", "Admin@123"]),
-
-            ["0900000002"] = ("Nhân viên lễ tân SportHub", "STAFF",
-                ["Staff@123", "Test@1234"]),
-
-            ["0911111111"] = ("Nguyen Van An (Lễ tân)", "STAFF",
-                ["Test@1234", "Staff@123"]),
-
-            ["0922222201"] = ("Phạm Minh Dũng", "PLAYER",
-                ["Test@1234"]),
-
-            ["0922222202"] = ("Hoàng Thị Lan", "PLAYER",
-                ["Test@1234"])
-        };
-
-    // ── Login ────────────────────────────────────────────────
-
+    // Đăng nhập
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         var phone = request.PhoneNumber?.Trim() ?? string.Empty;
@@ -124,7 +120,7 @@ public class AuthService(
 
         var user = await uow.Users.GetForLoginAsync(phone);
 
-        // Kiểm tra tài khoản Demo
+        // Kiểm tra và tạo tài khoản Demo nếu chưa tồn tại
         if (DemoAccounts.TryGetValue(phone, out var demo) &&
             demo.Passwords.Contains(password))
         {
@@ -166,8 +162,7 @@ public class AuthService(
             }
             else if (user is not null)
             {
-                // Chỉ bổ sung Role nếu tài khoản cũ chưa có Role.
-                // Không tự động mở khóa tài khoản đã bị Admin khóa.
+                // Không tự mở khóa tài khoản đã bị Admin khóa
                 if (user.UserRole is null && roleEntity is not null)
                 {
                     user.UserRole = new UserRole
@@ -176,7 +171,7 @@ public class AuthService(
                     };
                 }
 
-                // Đồng bộ mật khẩu Demo nếu mật khẩu hiện tại khác.
+                // Đồng bộ mật khẩu Demo
                 if (!passwordHasher.Verify(password, user.PasswordHash))
                 {
                     user.PasswordHash = passwordHasher.Hash(password);
@@ -186,8 +181,7 @@ public class AuthService(
             }
         }
 
-        // Cùng một thông báo cho sai SĐT và sai mật khẩu
-        // để không tiết lộ số điện thoại đã đăng ký.
+        // Kiểm tra tài khoản và mật khẩu
         if (user is null ||
             !passwordHasher.Verify(password, user.PasswordHash))
         {
@@ -195,7 +189,7 @@ public class AuthService(
                 "Sai số điện thoại hoặc mật khẩu.");
         }
 
-        // Kiểm tra điểm uy tín theo SRS
+        // Kiểm tra điểm uy tín
         if (user.PlayerProfile is not null &&
             user.PlayerProfile.ReputationScore < 40)
         {
@@ -209,14 +203,14 @@ public class AuthService(
                 "Tài khoản bị khóa do điểm uy tín dưới 40.");
         }
 
-        // Kiểm tra tài khoản có bị Admin khóa không
+        // Kiểm tra tài khoản bị Admin khóa
         if (!user.IsActive)
         {
             throw new ForbiddenException(
                 "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ Admin.");
         }
 
-        // Tự động nâng cấp mật khẩu SHA256 cũ lên BCrypt
+        // Nâng cấp mật khẩu SHA256 cũ lên BCrypt
         if (passwordHasher.NeedsRehash(user.PasswordHash))
         {
             user.PasswordHash = passwordHasher.Hash(password);
@@ -229,8 +223,7 @@ public class AuthService(
         return BuildAuthResponse(user, role, facilityId);
     }
 
-    // ── Get Current User ─────────────────────────────────────
-
+    // Lấy thông tin người dùng hiện tại
     public async Task<MeResponse> GetMeAsync(int userId)
     {
         var user = await uow.Users.GetWithProfileAsync(userId)
@@ -255,11 +248,11 @@ public class AuthService(
             user.PhoneNumber,
             role,
             FacilityOf(user, role),
-            player);
+            player,
+            user.AvatarUrl);
     }
 
-    // ── Update Sport Profile ─────────────────────────────────
-
+    // Cập nhật thông tin môn thể thao
     public async Task UpdateSportProfileAsync(
         int userId,
         UpdateSportProfileRequest request)
@@ -274,8 +267,106 @@ public class AuthService(
         await uow.SaveChangesAsync();
     }
 
-    // ── Helpers ──────────────────────────────────────────────
+    // Cập nhật thông tin tài khoản
+    public async Task<MeResponse> UpdateAccountAsync(
+        int userId,
+        UpdateAccountRequest request)
+    {
+        var user = await uow.Users.GetWithProfileAsync(userId)
+            ?? throw new NotFoundException("Tài khoản", userId);
 
+        var fullName = request.FullName?.Trim() ?? string.Empty;
+        var phone = request.PhoneNumber?.Trim() ?? string.Empty;
+
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(fullName))
+            errors.Add("Vui lòng nhập họ tên.");
+
+        if (fullName.Length > 100)
+            errors.Add("Họ tên không được vượt quá 100 ký tự.");
+
+        if (phone.Length < 9 || phone.Length > 15 ||
+            !phone.All(char.IsDigit))
+        {
+            errors.Add("Số điện thoại không hợp lệ.");
+        }
+
+        if (errors.Count > 0)
+            throw new ValidationException(errors);
+
+        if (phone != user.PhoneNumber)
+        {
+            var existingUser =
+                await uow.Users.GetByPhoneNumberAsync(phone);
+
+            if (existingUser is not null)
+            {
+                throw new ConflictException(
+                    "Số điện thoại đã được tài khoản khác sử dụng.");
+            }
+        }
+
+        user.FullName = fullName;
+        user.PhoneNumber = phone;
+
+        uow.Users.Update(user);
+        await uow.SaveChangesAsync();
+
+        logger.LogInformation(
+            "User {UserId} updated account information", userId);
+
+        return await GetMeAsync(userId);
+    }
+
+    // Đổi mật khẩu
+    public async Task ChangePasswordAsync(
+        int userId,
+        ChangePasswordRequest request)
+    {
+        var user = await uow.Users.GetByIdAsync(userId)
+            ?? throw new NotFoundException("Tài khoản", userId);
+
+        var currentPassword = request.CurrentPassword ?? string.Empty;
+        var newPassword = request.NewPassword ?? string.Empty;
+        var confirmPassword = request.ConfirmNewPassword ?? string.Empty;
+
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(currentPassword))
+            errors.Add("Vui lòng nhập mật khẩu hiện tại.");
+
+        if (newPassword.Length < 6)
+            errors.Add("Mật khẩu mới phải có ít nhất 6 ký tự.");
+
+        if (newPassword != confirmPassword)
+            errors.Add("Mật khẩu xác nhận không khớp.");
+
+        if (errors.Count > 0)
+            throw new ValidationException(errors);
+
+        if (!passwordHasher.Verify(currentPassword, user.PasswordHash))
+        {
+            throw new UnauthorizedException(
+                "Mật khẩu hiện tại không chính xác.");
+        }
+
+        if (passwordHasher.Verify(newPassword, user.PasswordHash))
+        {
+            throw new ValidationException(
+                ["Mật khẩu mới phải khác mật khẩu hiện tại."]);
+        }
+
+        user.PasswordHash = passwordHasher.Hash(newPassword);
+
+        uow.Users.Update(user);
+        await uow.SaveChangesAsync();
+
+        logger.LogInformation(
+            "User {UserId} changed password successfully", userId);
+    }
+
+    // Xác định Role
     private static string RoleOf(User user)
     {
         return user.UserRole?.Role?.RoleCode
@@ -283,11 +374,13 @@ public class AuthService(
                 "Tài khoản chưa được phân quyền.");
     }
 
+    // Lấy FacilityId nếu là Staff
     private static int? FacilityOf(User user, string role)
         => role == StaffRole
             ? user.StaffProfile?.ManagedFacilityId
             : null;
 
+    // Tạo AuthResponse
     private AuthResponse BuildAuthResponse(
         User user,
         string role,
@@ -302,6 +395,7 @@ public class AuthService(
             role,
             facilityId,
             token.AccessToken,
-            token.ExpiresAt);
+            token.ExpiresAt,
+            user.AvatarUrl);
     }
 }

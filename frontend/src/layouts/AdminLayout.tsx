@@ -69,8 +69,8 @@ const MENUS: Record<Area, MenuGroup[]> = {
     {
       title: 'Tài khoản',
       items: [
-        { to: '/admin/staff', label: 'Nhân viên & phân quyền', icon: UserCog, feature: 'staffManage' },
-        { to: '/admin/players', label: 'Người chơi', icon: Users, feature: 'players' },
+        { to: '/admin/staff', label: 'Nhân viên & phân quyền', icon: UserCog },
+        { to: '/admin/players', label: 'Người chơi', icon: Users },
       ],
     },
   ],
