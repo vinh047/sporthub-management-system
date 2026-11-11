@@ -71,7 +71,8 @@ public record SlotAvailability(
     TimeOnly EndTime,
     bool IsAvailable,
     bool IsPeakHour,
-    decimal Price
+    decimal Price,
+    string Status = "Available"
 );
 
 public record LockCourtRequest(
@@ -96,4 +97,14 @@ public record PriceRuleDetailDto(
     int TimeSlotId,
     decimal HourlyRate,
     bool IsPeakHour
+);
+
+public record SlotPriceBreakdownResponse(
+    int CourtId,
+    int TimeSlotId,
+    decimal BasePrice,
+    decimal PeakMultiplier,
+    decimal WeekendSurcharge,
+    decimal FinalPrice,
+    bool IsFallback
 );

@@ -20,6 +20,7 @@ public class Tournament
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
+    public long BracketVersion { get; set; }
     public Facility.Facility Facility { get; set; } = null!;
     public Facility.Sport Sport { get; set; } = null!;
     public Auth.User CreatedByStaff { get; set; } = null!;

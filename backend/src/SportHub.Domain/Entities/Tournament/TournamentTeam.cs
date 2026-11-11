@@ -7,7 +7,7 @@ public class TournamentTeam
     public string TeamName { get; set; } = string.Empty;
     public int? SeedNumber { get; set; }
     /// <summary>Registered, Approved, Disqualified</summary>
-    public string Status { get; set; } = "Approved";
+    public string Status { get; set; } = "Registered";
     public DateTime RegistrationDate { get; set; } = DateTime.UtcNow;
 
     // Navigation

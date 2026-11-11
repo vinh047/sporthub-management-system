@@ -1,12 +1,8 @@
 namespace SportHub.Application.DTOs.CheckIn;
 
-public record CheckInRequest(
-    int BookingDetailId,
-    string Channel          // Phone, QRCode, Manual
-);
-
 public record CheckInItem(
     int BookingDetailId,
+    int BookingId,
     string BookingCode,
     string CustomerName,
     string? Phone,

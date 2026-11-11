@@ -1,4 +1,4 @@
-using SportHub.Application.DTOs.Facility;
+﻿using SportHub.Application.DTOs.Facility;
 using SportHub.Application.Interfaces.Repositories;
 using SportHub.Application.Interfaces.Services;
 using SportHub.Domain.Entities.Facility;
@@ -8,6 +8,8 @@ namespace SportHub.Application.Services;
 
 public class PricingService(IUnitOfWork uow) : IPricingService
 {
+    private const decimal FallbackSlotPrice = 100_000m;
+
     public async Task<decimal> CalculateSlotPriceAsync(int courtId, DateOnly playDate, int timeSlotId)
     {
         var court = await uow.Courts.GetWithRelationsAsync(courtId)
@@ -16,10 +18,41 @@ public class PricingService(IUnitOfWork uow) : IPricingService
             ?? throw new NotFoundException("Khung giờ", timeSlotId);
         var policy = await uow.Facilities.GetPricePolicyAsync(court.FacilityId, court.SportId, playDate);
         var rule = policy?.PriceRuleDetails.FirstOrDefault(r => r.TimeSlotId == timeSlotId);
-        var price = rule?.HourlyRate ?? policy?.BasePrice ?? 0;
+        var price = rule?.HourlyRate ?? policy?.BasePrice ?? FallbackSlotPrice;
         if (policy is not null && playDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
             price *= 1 + policy.WeekendSurchargePercent / 100;
         return price;
+    }
+
+    public async Task<SlotPriceBreakdownResponse> GetSlotPriceBreakdownAsync(
+        int courtId, DateOnly playDate, int timeSlotId)
+    {
+        var court = await uow.Courts.GetWithRelationsAsync(courtId)
+            ?? throw new NotFoundException("Sân", courtId);
+        var slot = (await uow.Facilities.GetTimeSlotsAsync()).FirstOrDefault(s => s.Id == timeSlotId)
+            ?? throw new NotFoundException("Khung giờ", timeSlotId);
+        var policy = await uow.Facilities.GetPricePolicyAsync(court.FacilityId, court.SportId, playDate);
+        var rule = policy?.PriceRuleDetails.FirstOrDefault(r => r.TimeSlotId == timeSlotId);
+        var isFallback = policy is null || rule is null;
+        var basePrice = rule?.HourlyRate ?? policy?.BasePrice ?? FallbackSlotPrice;
+        var weekendSurcharge = policy is not null &&
+            playDate.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday
+            ? basePrice * policy.WeekendSurchargePercent / 100
+            : 0;
+        var finalPrice = decimal.Round(basePrice + weekendSurcharge, 2, MidpointRounding.AwayFromZero);
+        return new(courtId, timeSlotId, basePrice, 1m, weekendSurcharge, finalPrice, isFallback);
+    }
+
+    public async Task<IReadOnlyDictionary<int, decimal>> GetSlotPricesAsync(int courtId, DateOnly playDate)
+    {
+        if (courtId <= 0)
+            throw new ValidationException(["Sân không hợp lệ."]);
+
+        var prices = await uow.Pricing.GetSlotPricesAsync(courtId, playDate);
+        if (prices.Count == 0)
+            throw new ValidationException(["Không tìm thấy sân đang hoạt động hoặc chính sách giá cho ngày này."]);
+
+        return prices;
     }
 
     public async Task UpsertPricePolicyAsync(UpsertPricePolicyRequest request)

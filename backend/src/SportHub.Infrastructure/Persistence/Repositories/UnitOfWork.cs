@@ -1,44 +1,76 @@
-    using Microsoft.EntityFrameworkCore.Storage;
-    using System.Data;
-    using SportHub.Application.Interfaces.Repositories;
 
-    namespace SportHub.Infrastructure.Persistence.Repositories;
+using System.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using SportHub.Application.Interfaces.Repositories;
 
-    public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
+namespace SportHub.Infrastructure.Persistence.Repositories;
+
+public class UnitOfWork(SportHubDbContext context) : IUnitOfWork
+{
+    private IDbContextTransaction? _transaction;
+
+    // User và Profile
+    public IUserRepository Users { get; } = new UserRepository(context);
+    public IStaffProfileRepository StaffProfiles { get; } = new StaffProfileRepository(context);
+    public IPlayerProfileRepository PlayerProfiles { get; } = new PlayerProfileRepository(context);
+
+    // Facility và Pricing
+    public IFacilityRepository Facilities { get; } = new FacilityRepository(context);
+    public ICourtRepository Courts { get; } = new CourtRepository(context);
+    public IPricingRepository Pricing { get; } = new PricingRepository(context);
+    public IPromotionRepository Promotions { get; } = new PromotionRepository(context);
+
+    // Booking và Payment
+    public IBookingRepository Bookings { get; } = new BookingRepository(context);
+    public IPaymentRepository Payments { get; } = new PaymentRepository(context);
+    public ICheckInRepository CheckIns { get; } = new CheckInRepository(context);
+
+    // Social và Tournament
+    public ISocialSessionRepository SocialSessions { get; } = new SocialSessionRepository(context);
+    public ITournamentRepository Tournaments { get; } = new TournamentRepository(context);
+
+    // Report
+    public IReportRepository Reports { get; } = new ReportRepository(context);
+
+    // Save Changes
+    public async Task<int> SaveChangesAsync(CancellationToken ct = default)
+        => await context.SaveChangesAsync(ct);
+
+    // Transaction
+    public async Task BeginTransactionAsync(
+        IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
     {
-        private IDbContextTransaction? _transaction;
+        if (_transaction is not null)
+            throw new InvalidOperationException("Transaction đã được bắt đầu.");
 
-        public IUserRepository Users { get; } = new UserRepository(context);
-        public IStaffProfileRepository StaffProfiles { get; } = new StaffProfileRepository(context);
-        public IPlayerProfileRepository PlayerProfiles { get; } = new PlayerProfileRepository(context);
-        public IFacilityRepository Facilities { get; } = new FacilityRepository(context);
-        public IPromotionRepository Promotions { get; } = new PromotionRepository(context);
-        public IBookingRepository Bookings { get; } = new BookingRepository(context);
-        public ICourtRepository Courts { get; } = new CourtRepository(context);
-        public ISocialSessionRepository SocialSessions { get; } = new SocialSessionRepository(context);
-        public ITournamentRepository Tournaments { get; } = new TournamentRepository(context);
-        public ICheckInRepository CheckIns { get; } = new CheckInRepository(context);
+        _transaction = await context.Database.BeginTransactionAsync(isolationLevel);
+    }
 
-        public async Task<int> SaveChangesAsync(CancellationToken ct = default)
-            => await context.SaveChangesAsync(ct);
-
-        public async Task BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
-            => _transaction = await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions
-                .BeginTransactionAsync(context.Database, isolationLevel, CancellationToken.None);
-
-        public async Task CommitTransactionAsync()
+    public async Task CommitTransactionAsync()
+    {
+        if (_transaction is not null)
         {
-            if (_transaction is not null) await _transaction.CommitAsync();
-        }
-
-        public async Task RollbackTransactionAsync()
-        {
-            if (_transaction is not null) await _transaction.RollbackAsync();
-        }
-
-        public void Dispose()
-        {
-            _transaction?.Dispose();
-            context.Dispose();
+            await _transaction.CommitAsync();
+            await _transaction.DisposeAsync();
+            _transaction = null;
         }
     }
+
+    public async Task RollbackTransactionAsync()
+    {
+        if (_transaction is not null)
+        {
+            await _transaction.RollbackAsync();
+            await _transaction.DisposeAsync();
+            _transaction = null;
+        }
+    }
+
+    // Dispose
+    public void Dispose()
+    {
+        _transaction?.Dispose();
+        context.Dispose();
+    }
+}

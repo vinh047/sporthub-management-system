@@ -3,6 +3,8 @@ using SportHub.Application.Common;
 using SportHub.Domain.Exceptions;
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
 
 namespace SportHub.API.Middleware;
 
@@ -31,6 +33,19 @@ public class GlobalExceptionHandler(RequestDelegate next, ILogger<GlobalExceptio
 
         var (statusCode, response) = ex switch
         {
+            DbUpdateConcurrencyException => (
+                HttpStatusCode.Conflict,
+                BaseResponse<object>.Fail("Dữ liệu vừa được cập nhật bởi người khác. Vui lòng tải lại và thử lại.")),
+            DbUpdateException update when update.InnerException is SqlException { Number: 2601 or 2627 }
+                && update.Entries.Any(entry => entry.Entity is Domain.Entities.Tournament.TournamentMatchSet or Domain.Entities.Tournament.TournamentMatch) => (
+                HttpStatusCode.Conflict,
+                BaseResponse<object>.Fail("Trận đấu hoặc set vừa được người khác ghi nhận. Vui lòng tải lại nhánh đấu.")),
+            DbUpdateException { InnerException: SqlException { Number: 1205 } } => (
+                HttpStatusCode.Conflict,
+                BaseResponse<object>.Fail("Có thao tác đồng thời. Vui lòng tải lại và thử lại.")),
+            SqlException { Number: 1205 } => (
+                HttpStatusCode.Conflict,
+                BaseResponse<object>.Fail("Có thao tác đồng thời. Vui lòng tải lại và thử lại.")),
             Domain.Exceptions.ValidationException ve => (
                 HttpStatusCode.BadRequest,
                 BaseResponse<object>.Fail("Dữ liệu không hợp lệ.", ve.Errors.ToList())),

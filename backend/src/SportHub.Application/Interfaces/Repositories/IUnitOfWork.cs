@@ -11,10 +11,13 @@ public interface IUnitOfWork : IDisposable
     IFacilityRepository Facilities { get; }
     IPromotionRepository Promotions { get; }
     IBookingRepository Bookings { get; }
+    IPaymentRepository Payments { get; }
     ICourtRepository Courts { get; }
+    IPricingRepository Pricing { get; }
     ISocialSessionRepository SocialSessions { get; }
     ITournamentRepository Tournaments { get; }
     ICheckInRepository CheckIns { get; }
+    IReportRepository Reports { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task BeginTransactionAsync(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted);
     Task CommitTransactionAsync();

@@ -77,7 +77,20 @@ public class SportHubDbContext(DbContextOptions<SportHubDbContext> options) : Db
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<BookingDetail>()
+            .HasIndex(detail => new { detail.CourtId, detail.PlayDate, detail.TimeSlotId });
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SportHubDbContext).Assembly);
+
+        foreach (var property in modelBuilder.Model.GetEntityTypes()
+                     .SelectMany(entityType => entityType.GetProperties())
+                     .Where(property => property.ClrType == typeof(decimal) || property.ClrType == typeof(decimal?)))
+        {
+            if (property.GetPrecision() is null)
+                property.SetPrecision(18);
+
+            if (property.GetScale() is null)
+                property.SetScale(2);
+        }
     }
 
     /// <summary>Auto-set UpdatedAt on SaveChanges</summary>

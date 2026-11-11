@@ -67,12 +67,15 @@ public class CourtService(IUnitOfWork uow) : ICourtService
             foreach (var slot in slots)
             {
                 var rule = rules?.GetValueOrDefault(slot.Id);
-                var price = rule?.HourlyRate ?? policy?.BasePrice ?? 0;
+                var isPeak = rule?.IsPeakHour ?? slot.IsDefaultPeak;
+                var fallbackPrice = isPeak ? 120_000m : 100_000m;
+                var price = rule?.HourlyRate ?? (policy is not null && policy.BasePrice > 0 ? policy.BasePrice : fallbackPrice);
                 if (policy is not null && date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                     price *= 1 + policy.WeekendSurchargePercent / 100;
-                var available = await uow.Bookings.IsSlotAvailableAsync(court.Id, date, slot.Id);
+                var status = await uow.Bookings.GetSlotStatusAsync(court.Id, date, slot.Id);
+                var available = status == "Available";
                 values.Add(new SlotAvailability(slot.Id, slot.StartTime, slot.EndTime,
-                    available, rule?.IsPeakHour ?? slot.IsDefaultPeak, price));
+                    available, isPeak, price, status));
             }
             result.Add(new(court.Id, court.CourtName, values));
         }

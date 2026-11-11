@@ -23,9 +23,9 @@ const NAV: {
 }[] = [
   { label: "Trang chủ", href: "#top" },
   { label: "Tìm sân", href: "#quick-search" },
-  { label: "Lịch đặt sân", feature: "schedule" },
+  { label: "Lịch đặt sân", to: "/player/booking" },
   { label: "Social", feature: "social" },
-  { label: "Giải đấu", feature: "tournaments" },
+  { label: "Giải đấu", to: "/tournaments" },
   { label: "Ưu đãi", to: "/vouchers" },
   { label: "Hướng dẫn", href: "#huong-dan" },
   { label: "Liên hệ", href: "#lien-he" },
@@ -124,13 +124,12 @@ export function PublicSiteHeader() {
             {renderLinks()}
           </nav>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => notifyComingSoon("booking")}
+            <Link
+              to={isAuthenticated ? "/player/booking" : "/login"}
               className="btn btn-primary px-5 py-2.5 font-semibold shadow-md"
             >
               Đặt sân ngay
-            </button>
+            </Link>
             <button
               type="button"
               className="lg:hidden btn border border-border px-3 py-2.5"
