@@ -14,6 +14,7 @@ const ACTIONS: { label: string; description: string; icon: LucideIcon; to?: stri
   { label: 'Bán sân tại quầy', description: 'Đặt nhanh cho khách vãng lai', icon: Store, to: '/staff/pos' },
   { label: 'Lịch sân hôm nay', description: 'Ma trận sân × khung giờ', icon: CalendarDays, feature: 'schedule' },
   { label: 'Khóa sân bảo trì', description: 'Khóa sân theo ngày và khung giờ', icon: Wrench, to: '/staff/maintenance' },
+  { label: 'Buổi chơi Social', description: 'Tạo và quản lý buổi chơi tại cơ sở', icon: CalendarDays, to: '/staff/social' },
   { label: 'Điểm danh Social', description: 'Check-in người tham gia buổi Social', icon: ClipboardCheck, feature: 'socialCheckin' },
   { label: 'Nhập tỉ số giải đấu', description: 'Cập nhật kết quả từng trận', icon: Swords, feature: 'tournamentManage' },
 ];

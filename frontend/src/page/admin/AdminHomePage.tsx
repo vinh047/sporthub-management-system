@@ -22,7 +22,7 @@ const MODULES: { title: string; description: string; icon: LucideIcon; to?: stri
   { title: 'Khuyến mãi', description: 'Tạo mã giảm giá, cấu hình voucher giờ thấp điểm', icon: Megaphone, to: '/admin/promotions' },
   { title: 'Nhân viên & phân quyền', description: 'Gán chi nhánh, cấp hoặc tước quyền', icon: UserCog, feature: 'staffManage' },
   { title: 'Người chơi', description: 'Tìm kiếm, khóa hoặc mở khóa tài khoản', icon: Users, feature: 'players' },
-  { title: 'Buổi chơi Social', description: 'Tạo buổi, bán vé, điểm danh', icon: Users, feature: 'social' },
+  { title: 'Buổi chơi Social', description: 'Tạo và quản lý buổi chơi cộng đồng', icon: Users, to: '/admin/social' },
   { title: 'Giải đấu', description: 'Tạo giải, sinh nhánh đấu, nhập tỉ số', icon: Trophy, feature: 'tournamentManage' },
   { title: 'Báo cáo', description: 'Doanh thu, tỷ lệ lấp đầy sân', icon: ChartColumn, feature: 'reports' },
   { title: 'Thông báo & CRM', description: 'Mẫu thông báo, tặng voucher tự động', icon: Bell, feature: 'notifications' },

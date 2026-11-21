@@ -48,6 +48,11 @@ public class BookingRepository(SportHubDbContext context)
             m.StartTime < timeSlot.EndTime &&
             timeSlot.StartTime < m.EndTime);
 
-        return !occupied && !maintenance;
+        var socialOccupied = await _context.SocialSessionCourts.AnyAsync(c =>
+            c.CourtId == courtId && c.Session.PlayDate == playDate &&
+            c.Session.Status != "Cancelled" &&
+            c.Session.StartTime < timeSlot.EndTime && timeSlot.StartTime < c.Session.EndTime);
+
+        return !occupied && !maintenance && !socialOccupied;
     }
 }

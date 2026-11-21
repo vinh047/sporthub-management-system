@@ -24,7 +24,7 @@ const NAV: {
   { label: "Trang chủ", href: "#top" },
   { label: "Tìm sân", href: "#quick-search" },
   { label: "Lịch đặt sân", feature: "schedule" },
-  { label: "Social", feature: "social" },
+  { label: "Social", to: "/social" },
   { label: "Giải đấu", feature: "tournaments" },
   { label: "Ưu đãi", to: "/vouchers" },
   { label: "Hướng dẫn", href: "#huong-dan" },

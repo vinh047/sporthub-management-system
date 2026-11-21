@@ -1,68 +1,47 @@
-
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SportHub.Application.DTOs.Social;
-using SportHub.Application.Interfaces.Repositories;
-using SportHub.Domain.Entities.Social;
+using SportHub.Application.Interfaces.Services;
 
 namespace SportHub.API.Controllers;
 
-[ApiController]
 [Route("api/social-sessions")]
-public class SocialSessionsController(
-    ISocialSessionRepository repository) : ControllerBase
+public class SocialSessionsController(ISocialSessionService service) : ApiControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAll(
-        [FromQuery] int? sportId,
-        [FromQuery] decimal? minSkill,
-        [FromQuery] decimal? maxSkill)
-    {
-        if (minSkill.HasValue && maxSkill.HasValue &&
-            minSkill.Value > maxSkill.Value)
-        {
-            return BadRequest("Invalid skill range.");
-        }
-
-        var sessions = await repository.SearchAsync(
-            sportId, minSkill, maxSkill);
-
-        return Ok(sessions.Select(MapToDto));
-    }
+    public async Task<IActionResult> GetAll([FromQuery] int? sportId, [FromQuery] decimal? minSkill,
+        [FromQuery] decimal? maxSkill, [FromQuery] int? facilityId, [FromQuery] DateOnly? date)
+        => Ok(await service.SearchAsync(sportId, facilityId, minSkill, maxSkill, date));
 
     [HttpGet("facility/{facilityId:int}")]
-    public async Task<IActionResult> GetByFacility(
-        int facilityId,
-        [FromQuery] DateOnly? date)
+    public async Task<IActionResult> GetByFacility(int facilityId, [FromQuery] DateOnly? date)
+        => Ok(await service.SearchAsync(null, facilityId, null, null, date));
+
+    [HttpGet("manage")]
+    [Authorize(Roles = "ADMIN,STAFF")]
+    public async Task<IActionResult> Manage() => Ok(await service.ManageAsync(RequiredUserId));
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetDetail(int id) => Ok(await service.GetAsync(id, CurrentUserId));
+
+    [HttpPost]
+    [Authorize(Roles = "ADMIN,STAFF")]
+    public async Task<IActionResult> Create([FromBody] CreateSocialSessionDto input)
     {
-        if (facilityId <= 0)
-            return BadRequest("Invalid facility ID.");
-
-        var sessions = await repository.GetByFacilityAsync(
-            facilityId, date);
-
-        return Ok(sessions.Select(MapToDto));
+        var result = await service.CreateAsync(input, RequiredUserId);
+        return CreatedAtAction(nameof(GetDetail), new { id = result.Id }, result);
     }
 
-    private static SocialSessionListItemDto MapToDto(
-        SocialSession session)
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "ADMIN,STAFF")]
+    public async Task<IActionResult> Update(int id, [FromBody] CreateSocialSessionDto input)
+        => Ok(await service.UpdateAsync(id, input, RequiredUserId));
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "ADMIN,STAFF")]
+    public async Task<IActionResult> Cancel(int id)
     {
-        return new SocialSessionListItemDto
-        {
-            Id = session.Id,
-            Title = session.Title,
-            FacilityId = session.FacilityId,
-            SportId = session.SportId,
-            PlayDate = session.PlayDate,
-            StartTime = session.StartTime,
-            EndTime = session.EndTime,
-            MaxParticipants = session.MaxParticipants,
-            FeePerSlot = session.FeePerSlot,
-            MinSkill = session.MinSkill,
-            MaxSkill = session.MaxSkill,
-            Status = session.Status,
-            RegisteredCount = session.Participants.Count(
-                p => p.Status == "Confirmed" ||
-                     p.Status == "CheckedIn")
-        };
+        await service.CancelAsync(id, RequiredUserId);
+        return NoContent();
     }
 }

@@ -26,7 +26,7 @@ const TODAY_LABEL = new Date().toLocaleDateString('vi-VN', { weekday: 'long', da
 
 const ACTIONS: { title: string; description: string; icon: LucideIcon; feature?: FeatureKey; to?: string; tint: string }[] = [
   { title: 'Đặt sân', description: 'Xem lịch trống, giữ chỗ 10 phút, thanh toán VietQR.', icon: CalendarDays, feature: 'booking', tint: 'bg-red-50 text-red-700' },
-  { title: 'Buổi chơi Social', description: 'Mua vé buổi giao lưu hợp trình độ.', icon: Users, feature: 'social', tint: 'bg-amber-50 text-amber-600' },
+  { title: 'Buổi chơi Social', description: 'Tìm buổi giao lưu hợp trình độ.', icon: Users, to: '/player/social', tint: 'bg-amber-50 text-amber-600' },
   { title: 'Giải đấu', description: 'Đăng ký đội, theo dõi nhánh đấu trực tiếp.', icon: Trophy, feature: 'tournaments', tint: 'bg-emerald-50 text-emerald-600' },
   { title: 'Đơn của tôi', description: 'Xem lại đơn đã đặt, hủy và hoàn tiền.', icon: ReceiptText, feature: 'myBookings', tint: 'bg-blue-50 text-blue-600' },
   { title: 'Ví voucher', description: 'Voucher còn dùng được và ưu đãi đang mở.', icon: TicketPercent, to: '/player/vouchers', tint: 'bg-purple-50 text-purple-600' },
@@ -87,9 +87,9 @@ export default function PlayerHomePage() {
             <button type="button" onClick={() => notifyComingSoon('booking')} className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-red-700 shadow hover:bg-red-50">
               <CalendarDays size={18} /> Đặt sân ngay
             </button>
-            <button type="button" onClick={() => notifyComingSoon('social')} className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 py-3 font-semibold hover:bg-white/20">
+            <Link to="/player/social" className="flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-5 py-3 font-semibold hover:bg-white/20">
               <Users size={18} /> Tìm buổi Social
-            </button>
+            </Link>
           </div>
         </div>
       </section>

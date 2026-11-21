@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { CalendarDays, House, ReceiptText, TicketPercent, Trophy, UserRound, Users } from 'lucide-react';
+import { CalendarDays, House, ReceiptText, TicketPercent, Trophy, UserRound, Users, ChartNoAxesColumnIncreasing } from 'lucide-react';
 import Brand from '../components/Brand';
 import UserMenu from '../components/UserMenu';
 import { notifyComingSoon } from '../utils/comingSoon';
@@ -12,7 +12,9 @@ const MENU: { to: string; label: string; icon: LucideIcon; feature?: FeatureKey 
   { to: '/player', label: 'Trang chủ', icon: House },
   { to: '/player/booking', label: 'Đặt sân', icon: CalendarDays, feature: 'booking' },
   { to: '/player/my-bookings', label: 'Đơn của tôi', icon: ReceiptText, feature: 'myBookings' },
-  { to: '/player/social', label: 'Social', icon: Users, feature: 'social' },
+  { to: '/player/social', label: 'Social', icon: Users },
+  { to: '/player/social-tickets', label: 'Vé Social', icon: TicketPercent },
+  { to: '/player/rating', label: 'Trình độ & uy tín', icon: ChartNoAxesColumnIncreasing },
   { to: '/player/tournaments', label: 'Giải đấu', icon: Trophy, feature: 'tournaments' },
   { to: '/player/vouchers', label: 'Ưu đãi', icon: TicketPercent },
   { to: '/player/profile', label: 'Hồ sơ', icon: UserRound, feature: 'profile' },

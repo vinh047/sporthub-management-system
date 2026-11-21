@@ -30,6 +30,9 @@ public static class DependencyInjection
         services.AddScoped<IBookingRepository, BookingRepository>();
         services.AddScoped<ICourtRepository, CourtRepository>();
         services.AddScoped<ISocialSessionRepository, SocialSessionRepository>();
+        services.AddScoped<ISocialTicketRepository, SocialTicketRepository>();
+        services.AddScoped<ISocialAttendanceService, SocialAttendanceService>();
+        services.AddScoped<IPlayerRatingService, PlayerRatingService>();
         services.AddScoped<ITournamentRepository, TournamentRepository>();
         services.AddScoped<ICheckInRepository, CheckInRepository>();
 
