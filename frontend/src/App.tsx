@@ -21,6 +21,11 @@ import AdminTournamentsPage from './page/admin/AdminTournamentsPage';
 import ReportsPage from './page/admin/ReportsPage';
 import ReceptionOrderModal from './components/ReceptionOrderModal';
 import VouchersPage from './page/user/VouchersPage';
+import SocialSessionsPage from './page/user/SocialSessionsPage';
+import SocialSessionDetailPage from './page/user/SocialSessionDetailPage';
+import SocialTicketsPage from './page/user/SocialTicketsPage';
+import PlayerRatingPage from './page/user/PlayerRatingPage';
+import SocialManagePage from './page/admin/SocialManagePage';
 import TournamentHubPage, { LegacyMyTournamentsRedirect } from './page/user/TournamentHubPage';
 
 function App() {
@@ -41,6 +46,8 @@ function App() {
       <Routes>
         {/* Công khai */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/social" element={<SocialSessionsPage />} />
+        <Route path="/social/:id" element={<SocialSessionDetailPage />} />
         <Route path="/tournaments" element={<TournamentHubPage />} />
         <Route path="/vouchers" element={<VouchersPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -61,6 +68,10 @@ function App() {
           <Route path="tournaments" element={<TournamentHubPage />} />
           <Route path="my-tournaments" element={<LegacyMyTournamentsRedirect />} />
           <Route path="vouchers" element={<VouchersPage />} />
+          <Route path="social" element={<SocialSessionsPage />} />
+          <Route path="social/:id" element={<SocialSessionDetailPage />} />
+          <Route path="social-tickets" element={<SocialTicketsPage />} />
+          <Route path="rating" element={<PlayerRatingPage />} />
         </Route>
 
         {/* Nhân viên (Admin cũng vào được) */}
@@ -77,6 +88,7 @@ function App() {
           <Route path="reception/orders/:bookingId" element={<ReceptionOrderModal standalone />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
+          <Route path="social" element={<SocialManagePage />} />
           <Route path="tournaments" element={<AdminTournamentsPage />} />
           <Route path="reports" element={<ReportsPage />} />
         </Route>
@@ -95,6 +107,7 @@ function App() {
           <Route path="reception/orders/:bookingId" element={<ReceptionOrderModal standalone />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
+          <Route path="social" element={<SocialManagePage />} />
           <Route path="facilities" element={<FacilitiesPage />} />
           <Route path="pricing" element={<PricingPage />} />
           <Route path="promotions" element={<PromotionsPage />} />

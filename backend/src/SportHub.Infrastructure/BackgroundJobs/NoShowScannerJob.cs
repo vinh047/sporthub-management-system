@@ -1,14 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SportHub.Infrastructure.Persistence;
+using SportHub.Application.Interfaces.Services;
 
 namespace SportHub.Infrastructure.BackgroundJobs;
 
 /// <summary>
-/// Job chạy mỗi 1 phút — quét danh sách BookingDetails đã kết thúc giờ chơi
-/// nhưng chưa được check-in → đánh NoShow và trừ 20 điểm uy tín.
-/// Dev 1 (Leader) sẽ implement phần này ở Tuần 6.
+/// Quét Social Participants mỗi phút; logic Booking vẫn thuộc TV1.
 /// </summary>
 public class NoShowScannerJob(IServiceProvider services, ILogger<NoShowScannerJob> logger)
     : BackgroundService
@@ -22,7 +20,9 @@ public class NoShowScannerJob(IServiceProvider services, ILogger<NoShowScannerJo
             try
             {
                 using var scope = services.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<SportHubDbContext>();
+                var attendance = scope.ServiceProvider.GetRequiredService<ISocialAttendanceService>();
+                var count = await attendance.ScanNoShowsAsync(stoppingToken);
+                if (count > 0) logger.LogInformation("Social NoShow: {Count} tickets processed", count);
 
                 // TODO (Tuần 6):
                 // 1. Query BookingDetails WHERE PlayDate+StartTime < UtcNow - 30min
