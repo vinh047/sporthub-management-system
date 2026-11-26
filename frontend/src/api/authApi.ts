@@ -14,6 +14,17 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UpdateAccountRequest {
+    fullName: string;
+    phoneNumber: string;
+}
+
+export interface ChangePasswordRequest {
+    currentPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+}
+
 export interface AuthResponse {
   userId: number;
   fullName: string;
@@ -22,6 +33,7 @@ export interface AuthResponse {
   facilityId: number | null;
   accessToken: string;
   expiresAt: string;
+  avatarUrl: string | null;
 }
 
 export interface PlayerSummary {
@@ -40,6 +52,7 @@ export interface MeResponse {
   role: Role;
   facilityId: number | null;
   player: PlayerSummary | null;
+  avatarUrl: string | null;
 }
 
 export const authApi = {
@@ -53,4 +66,14 @@ export const authApi = {
 
   updateSportProfile: (sports: { sportId: number; skillLevel: string }[]) =>
     axiosInstance.put('/auth/sport-profile', { sports }),
+
+  updateAccount: (data: UpdateAccountRequest) =>
+      axiosInstance
+          .put<ApiResponse<MeResponse>>('/auth/me', data)
+          .then((res) => res.data),
+
+  changePassword: (data: ChangePasswordRequest) =>
+      axiosInstance
+          .put<ApiResponse<unknown>>('/auth/change-password', data)
+          .then((res) => res.data),
 };

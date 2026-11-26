@@ -13,6 +13,7 @@
     "build:backend": "dotnet build backend/SportHub.slnx",
     "test:backend": "dotnet test backend/tests/SportHub.Tests/SportHub.Tests.csproj",
     "migrate": "dotnet ef database update --project backend/src/SportHub.Infrastructure --startup-project backend/src/SportHub.API",
+    "seed": "dotnet run --seed --project backend/src/SportHub.API",
     "dev:frontend": "pnpm --dir frontend dev",
     "build:frontend": "pnpm --dir frontend build",
     "lint:frontend": "pnpm --dir frontend lint",

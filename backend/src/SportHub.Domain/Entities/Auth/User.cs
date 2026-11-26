@@ -8,6 +8,7 @@ public class User : BaseEntity
     public string PhoneNumber { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public string? AvatarUrl { get; set; }
 
     public UserRole? UserRole { get; set; }
     public StaffProfile? StaffProfile { get; set; }

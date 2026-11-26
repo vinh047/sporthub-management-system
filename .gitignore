@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+*.zip
+backend/src/SportHub.API/wwwroot/uploads/*

@@ -1,12 +1,15 @@
+
 using Microsoft.OpenApi;
 
 namespace SportHub.API.Extensions;
 
 public static class SwaggerExtensions
 {
-    public static IServiceCollection AddSwaggerDocumentation(this IServiceCollection services)
+    public static IServiceCollection AddSwaggerDocumentation(
+        this IServiceCollection services)
     {
         services.AddEndpointsApiExplorer();
+
         services.AddSwaggerGen(options =>
         {
             options.SwaggerDoc("v1", new OpenApiInfo
@@ -16,34 +19,35 @@ public static class SwaggerExtensions
                 Description = "Hệ thống Quản lý Cụm Sân Thể Thao SportHub"
             });
 
-            // Cấu hình JWT Bearer Authorize trong Swagger UI
+            // Khai báo phương thức xác thực JWT Bearer
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Name = "Authorization",
                 Type = SecuritySchemeType.Http,
-                Scheme = "Bearer",
+                Scheme = "bearer",
                 BearerFormat = "JWT",
                 In = ParameterLocation.Header,
                 Description = "Nhập Access Token JWT (không cần gõ chữ 'Bearer ')."
             });
 
-            options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
-            {
+            // Áp dụng JWT cho các API trong Swagger
+            options.AddSecurityRequirement(document =>
+                new OpenApiSecurityRequirement
                 {
-                    new OpenApiSecuritySchemeReference("Bearer"),
-                    new List<string>()
-                }
-            });
+                    [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+                });
         });
 
         return services;
     }
 
-    public static IApplicationBuilder UseSwaggerDocumentation(this WebApplication app)
+    public static IApplicationBuilder UseSwaggerDocumentation(
+        this WebApplication app)
     {
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
+
             app.UseSwaggerUI(c =>
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "SportHub API v1");

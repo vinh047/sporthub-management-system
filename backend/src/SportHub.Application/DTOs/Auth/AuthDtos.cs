@@ -32,7 +32,8 @@ public record AuthResponse(
     string Role,
     int? FacilityId,        // Cơ sở của Staff, null với Player/Admin
     string AccessToken,
-    DateTime ExpiresAt
+    DateTime ExpiresAt,
+    string? AvatarUrl
 );
 
 public record MeResponse(
@@ -41,7 +42,8 @@ public record MeResponse(
     string PhoneNumber,
     string Role,
     int? FacilityId,
-    PlayerSummary? Player   // null nếu không phải người chơi
+    PlayerSummary? Player,    // null nếu không phải người chơi
+    string? AvatarUrl   
 );
 
 public record PlayerSummary(
@@ -51,4 +53,15 @@ public record PlayerSummary(
     int LoyaltyPoints,
     string Tier,
     int TotalMatchesPlayed
+);
+
+public record UpdateAccountRequest(
+    string? FullName,
+    string? PhoneNumber
+);
+
+public record ChangePasswordRequest(
+    string? CurrentPassword,
+    string? NewPassword,
+    string? ConfirmNewPassword
 );
