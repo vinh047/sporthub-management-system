@@ -8,10 +8,11 @@ export const axiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor — tự động đính kèm JWT token
+// Request interceptor — tự động đính kèm JWT token (trừ login/register)
 axiosInstance.interceptors.request.use((config) => {
+  const isAuthRequest = /\/auth\/(login|register)$/.test(config.url ?? '');
   const token = useAuthStore.getState().token;
-  if (token) {
+  if (token && !isAuthRequest) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;

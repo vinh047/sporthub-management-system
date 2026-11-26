@@ -8,4 +8,5 @@ public interface IUserRepository : IRepository<User>
     Task<User?> GetWithProfileAsync(int userId);
     Task<User?> GetForLoginAsync(string phoneNumber);
     Task<Role?> GetRoleByCodeAsync(string roleCode);
+    Task<List<User>> SearchByPhoneOrNameAsync(string keyword);
 }

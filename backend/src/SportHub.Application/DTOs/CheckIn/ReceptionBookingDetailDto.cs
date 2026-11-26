@@ -1,0 +1,32 @@
+namespace SportHub.Application.DTOs.CheckIn;
+
+public record ReceptionBookingDetailDto(
+    int BookingId,
+    string BookingCode,
+    string BookingStatus,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    DateTime? HoldExpiresAt,
+    int FacilityId,
+    string FacilityName,
+    string CustomerType,
+    string CustomerName,
+    string? CustomerPhone,
+    string? CustomerEmail,
+    string? CreatedByStaffName,
+    decimal TotalAmount,
+    decimal DiscountAmount,
+    decimal FinalAmount,
+    decimal PaidAmount,
+    decimal RemainingAmount,
+    int TotalSlots,
+    int CheckedInSlots,
+    ReceptionPlayerProfileDto? PlayerProfile,
+    List<ReceptionBookingSlotDto> Slots,
+    List<ReceptionPaymentDto> Payments,
+    string? CancelReason,
+    DateTime? CancelledAt,
+    decimal? RefundAmount,
+    int LoyaltyPointsEarned,
+    int ReputationDeltaApplied
+);

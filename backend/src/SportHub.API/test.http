@@ -143,6 +143,10 @@ Content-Type: application/json
 GET {{baseUrl}}/api/pricing/slot?courtId={{courtId}}&playDate={{testDate}}&timeSlotId={{timeSlotId}}
 Accept: application/json
 
+### Price breakdown, including fallback flag
+GET {{baseUrl}}/api/pricing/slot-breakdown?courtId={{courtId}}&playDate={{testDate}}&timeSlotId={{timeSlotId}}
+Accept: application/json
+
 ### Court availability
 GET {{baseUrl}}/api/court/availability?facilityId={{facilityId}}&sportId={{sportId}}&date={{testDate}}
 Accept: application/json

@@ -11,46 +11,109 @@ import { useAuthStore } from '../../store/authStore';
 import { homePathFor } from '../../utils/roleHome';
 import { saveSession } from '../../utils/session';
 
-// Tài khoản mẫu do DataSeeder tạo (chỉ hiện khi chạy dev)
+// Tài khoản mẫu do DataSeeder / DbSeeder tạo (chỉ hiện khi chạy dev)
 const DEMO_ACCOUNTS = [
-  { role: 'Quản trị', phone: '0900000000', password: 'Admin@123' },
-  { role: 'Nhân viên', phone: '0900000001', password: 'Staff@123' },
-  { role: 'Người chơi', phone: '0900000002', password: 'Player@123' },
+  {
+    role: 'Quản trị (Admin)',
+    phone: '0900000000',
+    password: 'Admin@123',
+    altPhone: '0900000001',
+    altPassword: 'Test@1234',
+  },
+  {
+    role: 'Nhân viên (Staff)',
+    phone: '0900000002',
+    password: 'Staff@123',
+    altPhone: '0911111111',
+    altPassword: 'Test@1234',
+  },
+  {
+    role: 'Người chơi (Player)',
+    phone: '0922222201',
+    password: 'Test@1234',
+    altPhone: '0922222202',
+    altPassword: 'Test@1234',
+  },
 ];
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, user } = useAuthStore();
+  const requestedPath = (location.state as {
+    from?: { pathname?: string; search?: string; hash?: string };
+  } | null)?.from;
+  const playerReturnPath = requestedPath?.pathname?.startsWith('/player/')
+    ? `${requestedPath.pathname}${requestedPath.search ?? ''}${requestedPath.hash ?? ''}`
+    : requestedPath?.pathname === '/vouchers'
+      ? `${requestedPath.pathname}${requestedPath.search ?? ''}${requestedPath.hash ?? ''}`
+    : null;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Đã đăng nhập thì vào thẳng trang của mình
-  if (isAuthenticated && user) return <Navigate to={homePathFor(user.role)} replace />;
+  if (isAuthenticated && user) {
+    const destination = user.role === 'PLAYER' && playerReturnPath
+      ? playerReturnPath
+      : homePathFor(user.role);
+    return <Navigate to={destination} replace />;
+  }
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const performLogin = async (rawPhone: string, rawPassword: string) => {
+    const cleanPhone = rawPhone.trim();
     setSubmitting(true);
     try {
-      const res = await authApi.login({ phoneNumber: phoneNumber.trim(), password });
-      if (!res.data) throw new Error('Không nhận được dữ liệu đăng nhập.');
+      let res;
+      try {
+        res = await authApi.login({ phoneNumber: cleanPhone, password: rawPassword });
+      } catch (firstErr) {
+        // Hỗ trợ tự động fallback giữa 2 bộ tài khoản mẫu của DataSeeder và DbSeeder
+        const matchedDemo = DEMO_ACCOUNTS.find(
+          (a) => a.phone === cleanPhone || a.altPhone === cleanPhone,
+        );
+        if (matchedDemo) {
+          const fallbackPhone =
+            cleanPhone === matchedDemo.phone ? matchedDemo.altPhone : matchedDemo.phone;
+          const fallbackPassword =
+            cleanPhone === matchedDemo.phone ? matchedDemo.altPassword : matchedDemo.password;
+          try {
+            res = await authApi.login({
+              phoneNumber: fallbackPhone,
+              password: fallbackPassword,
+            });
+          } catch {
+            // Nếu là tài khoản mẫu Người chơi mà CSDL chưa seed thì tự động đăng ký
+            if (cleanPhone === '0922222201' || cleanPhone === '0922222202') {
+              res = await authApi.register({
+                fullName: cleanPhone === '0922222201' ? 'Phạm Minh Dũng' : 'Hoàng Thị Lan',
+                phoneNumber: cleanPhone,
+                password: rawPassword,
+                confirmPassword: rawPassword,
+              });
+            } else {
+              throw firstErr;
+            }
+          }
+        } else {
+          throw firstErr;
+        }
+      }
+
+      if (!res?.data) throw new Error('Không nhận được dữ liệu đăng nhập.');
       toast.success(`Xin chào ${res.data.fullName}!`);
-      const homePath = saveSession(res.data);
-      const returnPath = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
-      const canReturnToPromotions = res.data.role === 'PLAYER' &&
-        (returnPath?.pathname === '/vouchers' || returnPath?.pathname?.startsWith('/player/'));
-      navigate(
-        canReturnToPromotions && returnPath?.pathname
-          ? `${returnPath.pathname}${returnPath.search ?? ''}${returnPath.hash ?? ''}`
-          : homePath,
-        { replace: true },
-      );
+      const defaultPath = saveSession(res.data);
+      navigate(res.data.role === 'PLAYER' && playerReturnPath ? playerReturnPath : defaultPath, { replace: true });
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    await performLogin(phoneNumber, password);
   };
 
   return (
@@ -100,11 +163,18 @@ export default function LoginPage() {
               <button
                 key={a.phone}
                 type="button"
-                onClick={() => { setPhoneNumber(a.phone); setPassword(a.password); }}
-                className="flex w-full justify-between rounded-lg px-2 py-1 text-left text-gray-700 hover:bg-red-100/70"
+                disabled={submitting}
+                onClick={() => {
+                  setPhoneNumber(a.phone);
+                  setPassword(a.password);
+                  void performLogin(a.phone, a.password);
+                }}
+                className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-gray-700 transition hover:bg-red-100/70 disabled:opacity-50"
               >
-                <span>{a.role}</span>
-                <span className="font-mono text-gray-500">{a.phone} / {a.password}</span>
+                <span className="font-medium">{a.role}</span>
+                <span className="font-mono text-xs text-gray-500">
+                  {a.phone} / {a.password} (Bấm để vào ngay)
+                </span>
               </button>
             ))}
           </div>

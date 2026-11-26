@@ -6,6 +6,8 @@ import LoginPage from './page/auth/LoginPage';
 import RegisterPage from './page/auth/RegisterPage';
 import PlayerLayout from './layouts/PlayerLayout';
 import PlayerHomePage from './page/user/PlayerHomePage';
+import BookingPage from './page/user/BookingPage';
+import MyBookingsPage from './page/user/MyBookingsPage';
 import AdminLayout from './layouts/AdminLayout';
 import StaffHomePage from './page/admin/StaffHomePage';
 import AdminHomePage from './page/admin/AdminHomePage';
@@ -15,12 +17,16 @@ import FacilitiesPage from './page/admin/FacilitiesPage';
 import MaintenancePage from './page/admin/MaintenancePage';
 import PricingPage from './page/admin/PricingPage';
 import PromotionsPage from './page/admin/PromotionsPage';
+import AdminTournamentsPage from './page/admin/AdminTournamentsPage';
+import ReportsPage from './page/admin/ReportsPage';
+import ReceptionOrderModal from './components/ReceptionOrderModal';
 import VouchersPage from './page/user/VouchersPage';
 import SocialSessionsPage from './page/user/SocialSessionsPage';
 import SocialSessionDetailPage from './page/user/SocialSessionDetailPage';
 import SocialTicketsPage from './page/user/SocialTicketsPage';
 import PlayerRatingPage from './page/user/PlayerRatingPage';
 import SocialManagePage from './page/admin/SocialManagePage';
+import TournamentHubPage, { LegacyMyTournamentsRedirect } from './page/user/TournamentHubPage';
 
 function App() {
   return (
@@ -42,6 +48,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/social" element={<SocialSessionsPage />} />
         <Route path="/social/:id" element={<SocialSessionDetailPage />} />
+        <Route path="/tournaments" element={<TournamentHubPage />} />
         <Route path="/vouchers" element={<VouchersPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -56,6 +63,10 @@ function App() {
           }
         >
           <Route index element={<PlayerHomePage />} />
+          <Route path="booking" element={<BookingPage />} />
+          <Route path="my-bookings" element={<MyBookingsPage />} />
+          <Route path="tournaments" element={<TournamentHubPage />} />
+          <Route path="my-tournaments" element={<LegacyMyTournamentsRedirect />} />
           <Route path="vouchers" element={<VouchersPage />} />
           <Route path="social" element={<SocialSessionsPage />} />
           <Route path="social/:id" element={<SocialSessionDetailPage />} />
@@ -74,9 +85,12 @@ function App() {
         >
           <Route index element={<StaffHomePage />} />
           <Route path="reception" element={<ReceptionPage />} />
+          <Route path="reception/orders/:bookingId" element={<ReceptionOrderModal standalone />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="social" element={<SocialManagePage />} />
+          <Route path="tournaments" element={<AdminTournamentsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         {/* Quản trị */}
@@ -90,12 +104,15 @@ function App() {
         >
           <Route index element={<AdminHomePage />} />
           <Route path="reception" element={<ReceptionPage />} />
+          <Route path="reception/orders/:bookingId" element={<ReceptionOrderModal standalone />} />
           <Route path="pos" element={<PosPage />} />
           <Route path="maintenance" element={<MaintenancePage />} />
           <Route path="social" element={<SocialManagePage />} />
           <Route path="facilities" element={<FacilitiesPage />} />
           <Route path="pricing" element={<PricingPage />} />
           <Route path="promotions" element={<PromotionsPage />} />
+          <Route path="tournaments" element={<AdminTournamentsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         {/* 404 Catch All */}

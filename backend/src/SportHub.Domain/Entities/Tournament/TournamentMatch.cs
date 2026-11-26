@@ -18,6 +18,7 @@ public class TournamentMatch
     public string Status { get; set; } = "Scheduled";
 
     // Navigation
+    public ICollection<TournamentMatchSet> Sets { get; set; } = [];
     public Tournament Tournament { get; set; } = null!;
     public Facility.Court? Court { get; set; }
     public TournamentTeam? Team1 { get; set; }

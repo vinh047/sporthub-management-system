@@ -265,9 +265,11 @@ namespace SportHub.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("FinalAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("GuestName")
@@ -326,13 +328,27 @@ namespace SportHub.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("PenaltyAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("RefundAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("RefundFailureReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<decimal>("RefundPercent")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("RefundStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("NotRequired");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -368,6 +384,7 @@ namespace SportHub.Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<decimal>("SlotPrice")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int>("TimeSlotId")
@@ -380,9 +397,9 @@ namespace SportHub.Infrastructure.Migrations
 
                     b.HasIndex("BookingId");
 
-                    b.HasIndex("CourtId");
-
                     b.HasIndex("TimeSlotId");
+
+                    b.HasIndex("CourtId", "PlayDate", "TimeSlotId");
 
                     b.ToTable("BookingDetails");
                 });
@@ -611,6 +628,7 @@ namespace SportHub.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("HourlyRate")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<bool>("IsPeakHour")
@@ -741,6 +759,7 @@ namespace SportHub.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("DiscountValue")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<DateTime>("EndDate")
@@ -753,9 +772,11 @@ namespace SportHub.Infrastructure.Migrations
                         .HasColumnType("bit");
 
                     b.Property<decimal?>("MaxDiscountAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("MinOrderAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("PromoCode")
@@ -960,6 +981,7 @@ namespace SportHub.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("BookingId")
@@ -971,11 +993,25 @@ namespace SportHub.Infrastructure.Migrations
                     b.Property<int>("PaymentMethodId")
                         .HasColumnType("int");
 
+                    b.Property<string>("PaymentUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
                     b.Property<DateTime?>("ProcessedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ProviderTransactionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProviderTransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("ReferenceCode")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("RelatedTransactionId")
+                        .HasColumnType("int");
 
                     b.Property<int?>("SocialParticipantId")
                         .HasColumnType("int");
@@ -989,6 +1025,13 @@ namespace SportHub.Infrastructure.Migrations
                     b.Property<int?>("TournamentTeamId")
                         .HasColumnType("int");
 
+                    b.Property<string>("TransactionType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasDefaultValue("Payment");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -997,6 +1040,10 @@ namespace SportHub.Infrastructure.Migrations
                     b.HasIndex("BookingId");
 
                     b.HasIndex("PaymentMethodId");
+
+                    b.HasIndex("RelatedTransactionId")
+                        .IsUnique()
+                        .HasFilter("[RelatedTransactionId] IS NOT NULL");
 
                     b.HasIndex("SocialParticipantId");
 
@@ -1100,12 +1147,15 @@ namespace SportHub.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("Delta")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("NewRating")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("OldRating")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<int?>("PlayerProfileUserId")
@@ -1336,6 +1386,10 @@ namespace SportHub.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<long>("BracketVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1463,11 +1517,37 @@ namespace SportHub.Infrastructure.Migrations
 
                     b.HasIndex("Team2Id");
 
-                    b.HasIndex("TournamentId");
-
                     b.HasIndex("WinnerTeamId");
 
+                    b.HasIndex("TournamentId", "RoundNumber", "MatchOrder")
+                        .IsUnique();
+
                     b.ToTable("TournamentMatches");
+                });
+
+            modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentMatchSet", b =>
+                {
+                    b.Property<int>("MatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SetNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RecordedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Team1Points")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Team2Points")
+                        .HasColumnType("int");
+
+                    b.HasKey("MatchId", "SetNumber");
+
+                    b.ToTable("TournamentMatchSet");
                 });
 
             modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentTeam", b =>
@@ -1818,6 +1898,11 @@ namespace SportHub.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SportHub.Domain.Entities.Payment.PaymentTransaction", "RelatedTransaction")
+                        .WithMany("RelatedTransactions")
+                        .HasForeignKey("RelatedTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SportHub.Domain.Entities.Social.SocialParticipant", "SocialParticipant")
                         .WithMany()
                         .HasForeignKey("SocialParticipantId");
@@ -1833,6 +1918,8 @@ namespace SportHub.Infrastructure.Migrations
                     b.Navigation("Booking");
 
                     b.Navigation("PaymentMethod");
+
+                    b.Navigation("RelatedTransaction");
 
                     b.Navigation("SocialParticipant");
 
@@ -2055,6 +2142,17 @@ namespace SportHub.Infrastructure.Migrations
                     b.Navigation("WinnerTeam");
                 });
 
+            modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentMatchSet", b =>
+                {
+                    b.HasOne("SportHub.Domain.Entities.Tournament.TournamentMatch", "Match")
+                        .WithMany("Sets")
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Match");
+                });
+
             modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentTeam", b =>
                 {
                     b.HasOne("SportHub.Domain.Entities.Tournament.Tournament", "Tournament")
@@ -2156,6 +2254,11 @@ namespace SportHub.Infrastructure.Migrations
                     b.Navigation("Transactions");
                 });
 
+            modelBuilder.Entity("SportHub.Domain.Entities.Payment.PaymentTransaction", b =>
+                {
+                    b.Navigation("RelatedTransactions");
+                });
+
             modelBuilder.Entity("SportHub.Domain.Entities.Player.PlayerProfile", b =>
                 {
                     b.Navigation("ReputationHistories");
@@ -2175,6 +2278,11 @@ namespace SportHub.Infrastructure.Migrations
                     b.Navigation("Matches");
 
                     b.Navigation("Teams");
+                });
+
+            modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentMatch", b =>
+                {
+                    b.Navigation("Sets");
                 });
 
             modelBuilder.Entity("SportHub.Domain.Entities.Tournament.TournamentTeam", b =>

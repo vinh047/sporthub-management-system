@@ -25,4 +25,10 @@ public class PricingController(IPricingService pricingService) : ApiControllerBa
         var price = await pricingService.CalculateSlotPriceAsync(courtId, playDate, timeSlotId);
         return Ok(BaseResponse<decimal>.Ok(price));
     }
+
+    [HttpGet("slot-breakdown")]
+    public async Task<ActionResult<BaseResponse<SlotPriceBreakdownResponse>>> GetSlotPriceBreakdown(
+        [FromQuery] int courtId, [FromQuery] DateOnly playDate, [FromQuery] int timeSlotId)
+        => Ok(BaseResponse<SlotPriceBreakdownResponse>.Ok(
+            await pricingService.GetSlotPriceBreakdownAsync(courtId, playDate, timeSlotId)));
 }

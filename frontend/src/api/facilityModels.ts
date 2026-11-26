@@ -47,6 +47,7 @@ export interface SlotAvailability {
   startTime: string;
   endTime: string;
   isAvailable: boolean;
+  status: string;
   isPeakHour: boolean;
   price: number;
 }

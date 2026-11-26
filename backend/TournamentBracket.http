@@ -1,0 +1,22 @@
+@baseUrl = http://localhost:5000
+@tournamentId = 1
+@matchId = 1
+@token = REPLACE_WITH_STAFF_OR_ADMIN_TOKEN
+
+### Public snapshot: includes version, nextMatchId/nextSlot, scores and champion
+GET {{baseUrl}}/api/tournaments/{{tournamentId}}/bracket
+
+### Generate once; only SingleElimination/OpenReg, at least 2 eligible teams
+POST {{baseUrl}}/api/tournaments/{{tournamentId}}/bracket
+Authorization: Bearer {{token}}
+
+### Record completed set 1. Use the latest snapshot version.
+PUT {{baseUrl}}/api/tournaments/{{tournamentId}}/bracket/matches/{{matchId}}/sets/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "team1Points": 21,
+  "team2Points": 15,
+  "expectedVersion": 1
+}
